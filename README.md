@@ -1,2 +1,2 @@
 # particle-system-vulkan
-A particle simulatino using Vulkan
+A particle simulation using Vulkan
