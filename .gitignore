@@ -43,3 +43,6 @@
 
 # VSCode
 .vscode/* 
+
+# Executable
+particle

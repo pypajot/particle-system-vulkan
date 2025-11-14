@@ -1,7 +1,7 @@
 NAME := particle
 CC := g++
 LDFLAGS := -lglfw -lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi
-CPPFLAGS := -Wall -Wextra -Werror -MMD --std c++17 -DNEBUG
+CPPFLAGS := -Wall -Wextra -Werror -MMD --std c++17 -DNDEBUG
 
 OBJDIR := obj
 SRCDIR := src

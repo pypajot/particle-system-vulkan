@@ -44,7 +44,6 @@ bool ParticleSystemApplication::checkValidationLayerSupport()
 
         for (const auto& layerProperties : availableLayers)
         {
-            std::cout << layerProperties.layerName << "\n";
             if (strcmp(layerName, layerProperties.layerName) == 0)
             {
                 layerFound = true;
@@ -96,6 +95,7 @@ void ParticleSystemApplication::createInstance()
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
+    
     uint32_t glfwExtensionCount = 0;
     const char **glfwExtensions;
     
