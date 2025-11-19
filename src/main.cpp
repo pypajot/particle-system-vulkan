@@ -21,7 +21,8 @@ int main() {
     catch(const std::exception& e)
     {
         std::cerr << e.what() << '\n';
+        return EXIT_FAILURE;
     }
     
-    return 0;
+    return EXIT_SUCCESS;
 }
