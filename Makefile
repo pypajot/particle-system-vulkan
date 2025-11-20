@@ -20,6 +20,13 @@ SRCS := main.cpp \
 OBJS := $(patsubst %.cpp,$(OBJDIR)/%.o, $(strip $(SRCS)))
 DEPS := $(patsubst %.cpp,$(OBJDIR)/%.d, $(strip $(SRCS)))
 
+SHADERDIR := shaders
+
+SHADERSRCS := shader.vert \
+			  shader.frag
+
+SHADERSPV := $(patsubst shader.%,$(SHADERDIR)/%.spv, $(strip $(SHADERSRCS)))
+
 
 INCS := ./include/
 
@@ -34,7 +41,7 @@ _WHITE		= \033[37m
 _NO_COLOR	= \033[0m
 
 
-all : $(NAME)
+all : shader $(NAME)
 
 debug: CPPFLAGS += -g -UNDEBUG
 debug: $(NAME)
@@ -48,16 +55,23 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	fi
 	$(CC) $(CPPFLAGS) -o $@ -c $< -I$(INCS)
 
+$(SHADERDIR)/%.spv: $(SHADERDIR)/shader.%
+	glslc $< -o $@
 
--include $(DEPS)
+shader: $(SHADERSPV)
+
+shaderclean:
+	rm -f $(SHADERSPV)
 
 clean:
 	rm -rfd $(OBJDIR)
 
-fclean: clean
+fclean: clean shaderclean
 	rm -f $(NAME)
 
 re: fclean all
+
+-include $(DEPS)
 
 
 .PHONY: re fclean clean all debug

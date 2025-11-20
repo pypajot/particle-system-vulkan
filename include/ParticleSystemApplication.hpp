@@ -56,6 +56,10 @@ class ParticleSystemApplication
         VkExtent2D swapChainExtent;
         std::vector<VkImageView> swapChainImageViews;
 
+        VkRenderPass renderPass;
+        VkPipelineLayout pipelineLayout;
+        
+        VkPipeline graphicsPipeline;
 
 
         const std::vector<const char*> validationLayers =
@@ -97,6 +101,11 @@ class ParticleSystemApplication
         void createSurface();
         void createSwapChain();
         void createImageViews();
+        void createRenderPass();
+        void createGraphicsPipeline();
+
+        VkShaderModule createShaderModule(const std::vector<char>& code);
+
 
         void initVulkan();
         void mainLoop();
