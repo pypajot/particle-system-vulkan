@@ -49,6 +49,14 @@ class ParticleSystemApplication
         VkQueue graphicsQueue;
         VkQueue presentQueue;
 
+        VkSwapchainKHR swapChain;
+
+        std::vector<VkImage> swapChainImages;
+        VkFormat swapChainImageFormat;
+        VkExtent2D swapChainExtent;
+        std::vector<VkImageView> swapChainImageViews;
+
+
 
         const std::vector<const char*> validationLayers =
         {
@@ -76,6 +84,9 @@ class ParticleSystemApplication
         void initWindow();
 
         SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+        VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+        VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+        VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
         QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
 
@@ -84,6 +95,8 @@ class ParticleSystemApplication
         void pickPhysicalDevice();
         void createLogicalDevice();
         void createSurface();
+        void createSwapChain();
+        void createImageViews();
 
         void initVulkan();
         void mainLoop();
