@@ -40,6 +40,8 @@ class ParticleSystemApplication
         void run();
 
     private:
+        const uint kNumberOfFramesInFlight = 2;
+
         GLFWwindow *window;
         VkInstance instance;
         VkDebugUtilsMessengerEXT debugMessenger;
@@ -61,6 +63,16 @@ class ParticleSystemApplication
         
         VkPipeline graphicsPipeline;
 
+        std::vector<VkFramebuffer> swapChainFramebuffers;
+
+        VkCommandPool commandPool;
+        std::vector<VkCommandBuffer> commandBuffer;
+
+        std::vector<VkSemaphore> imageAvailableSemaphore;
+        std::vector<VkSemaphore> renderFinishedSemaphore;
+        std::vector<VkFence> inFlightFence;
+
+        uint32_t currentFrame = 0;
 
         const std::vector<const char*> validationLayers =
         {
@@ -103,6 +115,15 @@ class ParticleSystemApplication
         void createImageViews();
         void createRenderPass();
         void createGraphicsPipeline();
+        void createFramebuffers();
+        void createCommandPool();
+        void createCommandBuffer();
+        void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+        void drawFrame();
+
+        void createSyncObjects();
+
+
 
         VkShaderModule createShaderModule(const std::vector<char>& code);
 
