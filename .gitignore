@@ -46,3 +46,6 @@
 
 # Executable
 particle
+
+# SPIR-V
+*.spv
