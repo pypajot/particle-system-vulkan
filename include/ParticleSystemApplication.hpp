@@ -15,6 +15,9 @@
 #define BASE_WIN_HEIGHT 1080
 #define BASE_WIN_WIDTH 1920
 
+#define PARTICLE_NUMBER 10000
+
+
 struct UniformBufferObject
 {
     glm::mat4 model;
@@ -34,12 +37,12 @@ struct test
 
 struct QueueFamilyIndices
 {
-    std::optional<uint32_t> graphicsFamily;
+    std::optional<uint32_t> graphicsAndComputeFamily;
     std::optional<uint32_t> presentFamily;
 
     bool isComplete()
     {
-        return graphicsFamily.has_value() && presentFamily.has_value();
+        return graphicsAndComputeFamily.has_value() && presentFamily.has_value();
     }
 };
 
@@ -99,6 +102,9 @@ class ParticleSystemApplication
 
         VkBuffer indexBuffer;
         VkDeviceMemory indexBufferMemory;
+
+        std::vector<VkBuffer> shaderStorageBuffers;
+        std::vector<VkDeviceMemory> shaderStorageBuffersMemory;
 
         std::vector<VkBuffer> uniformBuffers;
         std::vector<VkDeviceMemory> uniformBuffersMemory;
@@ -183,6 +189,7 @@ class ParticleSystemApplication
         void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
         void createVertexBuffer();
         void createIndexBuffer();
+        void createStorageBuffers();
         void createUniformBuffers();
         void createDescriptorPool();
         void createDescriptorSets();

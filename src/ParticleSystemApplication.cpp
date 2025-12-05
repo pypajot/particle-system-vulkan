@@ -227,8 +227,8 @@ QueueFamilyIndices ParticleSystemApplication::findQueueFamilies(VkPhysicalDevice
     int i = 0;
     for (const auto& queueFamily : queueFamilies)
     {
-        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-            indices.graphicsFamily = i;
+        if (queueFamily.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
+            indices.graphicsAndComputeFamily = i;
 
         VkBool32 presentSupport = false;
         vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
@@ -348,10 +348,10 @@ void ParticleSystemApplication::createSwapChain()
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
     QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
-    uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+    uint32_t queueFamilyIndices[] = {indices.graphicsAndComputeFamily.value(), indices.presentFamily.value()};
 
     // To change for better performance maybe ? , look up ownership for the swap chain images
-    if (indices.graphicsFamily != indices.presentFamily) 
+    if (indices.graphicsAndComputeFamily != indices.presentFamily) 
     {
         createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         createInfo.queueFamilyIndexCount = 2;
@@ -517,7 +517,7 @@ void ParticleSystemApplication::createLogicalDevice()
 
     std::unordered_set<uint32_t> uniqueQueueFamilies =
     {
-        indices.graphicsFamily.value(),
+        indices.graphicsAndComputeFamily.value(),
         indices.presentFamily.value()
     };
 
@@ -557,7 +557,7 @@ void ParticleSystemApplication::createLogicalDevice()
     if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS)
         throw std::runtime_error("Failed to create logical device.");
 
-    vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+    vkGetDeviceQueue(device, indices.graphicsAndComputeFamily.value(), 0, &graphicsQueue);
     vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 }
 
@@ -582,8 +582,8 @@ VkShaderModule ParticleSystemApplication::createShaderModule(const std::vector<c
 
 void ParticleSystemApplication::createGraphicsPipeline()
 {
-    auto vertShaderCode = readFile("shaders/vert.spv");
-    auto fragShaderCode = readFile("shaders/frag.spv");
+    auto vertShaderCode = readFile("shaders/triangle/shader.vert.spv");
+    auto fragShaderCode = readFile("shaders/triangle/shader.frag.spv");
 
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
@@ -848,7 +848,7 @@ void ParticleSystemApplication::createCommandPool()
     VkCommandPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+    poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsAndComputeFamily.value();
 
     if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
         throw std::runtime_error("Failed to create command pool.");
@@ -1030,6 +1030,19 @@ void ParticleSystemApplication::createVertexBuffer()
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
+
+void ParticleSystemApplication::createStorageBuffers()
+{
+    shaderStorageBuffers.resize(kNumberOfFramesInFlight);
+    shaderStorageBuffersMemory.resize(kNumberOfFramesInFlight);
+
+    VkDeviceSize bufferSize = sizeof(Vertex) * PARTICLE_NUMBER;
+
+    for (uint32_t i = 0; i < kNumberOfFramesInFlight; i++)
+        createBuffer(bufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, shaderStorageBuffers[i], shaderStorageBuffersMemory[i]);
+
+}
+
 
 uint32_t ParticleSystemApplication::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
 {

@@ -45,7 +45,7 @@
 .vscode/* 
 
 # Executable
-particle
+particle-engine
 
 # SPIR-V
 *.spv

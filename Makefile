@@ -1,4 +1,4 @@
-NAME := particle
+NAME := particle-engine
 CC := g++
 LDFLAGS := -lglfw -lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi
 CPPFLAGS := -Wall -Wextra -Werror -MMD --std c++17 -DNDEBUG
@@ -22,10 +22,11 @@ DEPS := $(patsubst %.cpp,$(OBJDIR)/%.d, $(strip $(SRCS)))
 
 SHADERDIR := shaders
 
-SHADERSRCS := shader.vert \
-			  shader.frag
+SHADERSRCS := triangle/shader.vert \
+			  triangle/shader.frag \
+			  particle/init.comp
 
-SHADERSPV := $(patsubst shader.%,$(SHADERDIR)/%.spv, $(strip $(SHADERSRCS)))
+SHADERSPV := $(patsubst %,$(SHADERDIR)/%.spv, $(strip $(SHADERSRCS)))
 
 
 INCS := ./include/
@@ -55,7 +56,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	fi
 	$(CC) $(CPPFLAGS) -o $@ -c $< -I$(INCS)
 
-$(SHADERDIR)/%.spv: $(SHADERDIR)/shader.%
+$(SHADERDIR)/%.spv: $(SHADERDIR)/%
 	glslc $< -o $@
 
 shader: $(SHADERSPV)
