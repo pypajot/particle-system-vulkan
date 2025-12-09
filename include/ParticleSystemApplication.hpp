@@ -84,9 +84,13 @@ class ParticleSystemApplication
 
         VkRenderPass renderPass;
         VkDescriptorSetLayout descriptorSetLayout;
-        VkPipelineLayout pipelineLayout;
-        
+        VkPipelineLayout graphicsPipelineLayout;
         VkPipeline graphicsPipeline;
+
+        VkDescriptorSetLayout computeDescriptorSetLayout;
+        VkPipelineLayout computePipelineLayout;
+        VkPipeline computePipeline;
+
 
         std::vector<VkFramebuffer> swapChainFramebuffers;
 
@@ -113,6 +117,7 @@ class ParticleSystemApplication
 
         VkDescriptorPool descriptorPool;
         std::vector<VkDescriptorSet> descriptorSets;
+        std::vector<VkDescriptorSet> computeDescriptorSets;
 
         VkImage depthImage;
         VkDeviceMemory depthImageMemory;
@@ -180,6 +185,7 @@ class ParticleSystemApplication
         void createImageViews();
         void createRenderPass();
         void createGraphicsPipeline();
+        void createComputePipeline();
         void createFramebuffers();
         void createCommandPool();
         void createCommandBuffer();
@@ -194,6 +200,7 @@ class ParticleSystemApplication
         void createDescriptorPool();
         void createDescriptorSets();
         void createDescriptorSetLayout();
+        void createComputeDescriptorSetLayout();
         void updateUniformBuffer(uint32_t currentImage);
 
         void createDepthResources();
@@ -206,6 +213,8 @@ class ParticleSystemApplication
         void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
         VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 
+        void initParticleBuffers();
+        
         void drawFrame();
 
         void createSyncObjects();
