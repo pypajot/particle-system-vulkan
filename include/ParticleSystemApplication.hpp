@@ -82,7 +82,7 @@ class ParticleSystemApplication
         VkExtent2D swapChainExtent;
         std::vector<VkImageView> swapChainImageViews;
 
-        VkRenderPass renderPass;
+        // VkRenderPass renderPass;
         VkDescriptorSetLayout descriptorSetLayout;
         VkPipelineLayout graphicsPipelineLayout;
         VkPipeline graphicsPipeline;
@@ -92,7 +92,7 @@ class ParticleSystemApplication
         VkPipeline computePipeline;
 
 
-        std::vector<VkFramebuffer> swapChainFramebuffers;
+        // std::vector<VkFramebuffer> swapChainFramebuffers;
 
         VkCommandPool commandPool;
         std::vector<VkCommandBuffer> commandBuffer;
@@ -151,7 +151,13 @@ class ParticleSystemApplication
 
         const std::vector<const char*> deviceExtensions =
         {
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+            VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
+            VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
+            VK_KHR_MAINTENANCE_2_EXTENSION_NAME,
+            VK_KHR_MULTIVIEW_EXTENSION_NAME
+
         };
 
         #ifdef NDEBUG
@@ -176,6 +182,19 @@ class ParticleSystemApplication
 
         QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
 
+        void transition_image_layout
+        (
+            VkCommandBuffer commandBuffer,
+            VkImage targetImage,
+            VkImageLayout oldLayout,
+            VkImageLayout newLayout,
+            VkAccessFlags2 srcAccessMask,
+            VkAccessFlags2 dstAccessMask,
+            VkPipelineStageFlags2 srcStageMask,
+            VkPipelineStageFlags2 dstStageMask,
+            uint imageAspectFlags
+        );
+
         void createInstance();
         void setupDebugMessenger();
         void pickPhysicalDevice();
@@ -183,10 +202,10 @@ class ParticleSystemApplication
         void createSurface();
         void createSwapChain();
         void createImageViews();
-        void createRenderPass();
+        // void createRenderPass();
         void createGraphicsPipeline();
         void createComputePipeline();
-        void createFramebuffers();
+        // void createFramebuffers();
         void createCommandPool();
         void createCommandBuffer();
         void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);

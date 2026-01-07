@@ -9,6 +9,11 @@
 #include <fstream>
 #include <glm/gtc/matrix_transform.hpp>
 
+void testFun()
+{
+    std::cout << "test\n";
+}
+
 ParticleSystemApplication::ParticleSystemApplication()
 {
 }
@@ -107,6 +112,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback
 {
     (void)messageType;
     (void)pUserData;
+    // (void)messageSeverity;
 
     if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
         std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
@@ -135,6 +141,8 @@ std::vector<const char*> ParticleSystemApplication::getRequiredExtensions()
     if (enableValidationLayers)
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
+    extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+
     return extensions;
 }
 
@@ -146,10 +154,10 @@ void ParticleSystemApplication::createInstance()
     VkApplicationInfo appInfo{};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName = "Particle system";
-    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.applicationVersion = VK_MAKE_API_VERSION(0, 1, 3, 0);
     appInfo.pEngineName = "Particle engine";
-    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion = VK_API_VERSION_1_0;
+    appInfo.engineVersion = VK_MAKE_API_VERSION(0, 1, 3, 0);
+    appInfo.apiVersion = VK_API_VERSION_1_3;
 
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -533,11 +541,22 @@ void ParticleSystemApplication::createLogicalDevice()
         queueCreateInfos.push_back(queueCreateInfo);
     }
     
+    VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeature{};
+
+    dynamicRenderingFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+    dynamicRenderingFeature.dynamicRendering = VK_TRUE;
+
+    VkPhysicalDeviceSynchronization2Features synchronisation2Feature{};
+
+    synchronisation2Feature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
+    synchronisation2Feature.pNext = &dynamicRenderingFeature;
+    synchronisation2Feature.synchronization2 = true;
 
     VkPhysicalDeviceFeatures deviceFeatures{};
     VkDeviceCreateInfo createInfo{};
 
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    createInfo.pNext = &synchronisation2Feature;
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
     createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
 
@@ -732,7 +751,16 @@ void ParticleSystemApplication::createGraphicsPipeline()
     if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &graphicsPipelineLayout) != VK_SUCCESS)
         throw std::runtime_error("failed to create pipeline layout!");
 
+    VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo {};
+    
+    pipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+    pipelineRenderingCreateInfo.colorAttachmentCount = 1;
+    pipelineRenderingCreateInfo.pColorAttachmentFormats = &swapChainImageFormat;
+    pipelineRenderingCreateInfo.depthAttachmentFormat = findDepthFormat();
+
     VkGraphicsPipelineCreateInfo pipelineInfo{};
+
+    pipelineInfo.pNext = &pipelineRenderingCreateInfo;
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     pipelineInfo.stageCount = 2;
     pipelineInfo.pStages = shaderStages;
@@ -747,7 +775,7 @@ void ParticleSystemApplication::createGraphicsPipeline()
     pipelineInfo.pDynamicState = &dynamicState;
 
     pipelineInfo.layout = graphicsPipelineLayout;
-    pipelineInfo.renderPass = renderPass;
+    pipelineInfo.renderPass = nullptr;
     pipelineInfo.subpass = 0;
 
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -794,86 +822,86 @@ void ParticleSystemApplication::createComputePipeline()
 }
 
 
-void ParticleSystemApplication::createRenderPass()
-{
-    VkAttachmentDescription depthAttachment{};
-    depthAttachment.format = findDepthFormat();
-    depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+// void ParticleSystemApplication::createRenderPass()
+// {
+//     VkAttachmentDescription depthAttachment{};
+//     depthAttachment.format = findDepthFormat();
+//     depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+//     depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+//     depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+//     depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+//     depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+//     depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+//     depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    VkAttachmentReference depthAttachmentRef{};
-    depthAttachmentRef.attachment = 1;
-    depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+//     VkAttachmentReference depthAttachmentRef{};
+//     depthAttachmentRef.attachment = 1;
+//     depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    VkAttachmentDescription colorAttachment{};
-    colorAttachment.format = swapChainImageFormat;
-    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+//     VkAttachmentDescription colorAttachment{};
+//     colorAttachment.format = swapChainImageFormat;
+//     colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+//     colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+//     colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+//     colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+//     colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+//     colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+//     colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-    VkAttachmentReference colorAttachmentRef{};
-    colorAttachmentRef.attachment = 0;
-    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+//     VkAttachmentReference colorAttachmentRef{};
+//     colorAttachmentRef.attachment = 0;
+//     colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-    VkSubpassDescription subpass{};
-    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = 1;
-    subpass.pColorAttachments = &colorAttachmentRef;
-    subpass.pDepthStencilAttachment = &depthAttachmentRef;
+//     VkSubpassDescription subpass{};
+//     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+//     subpass.colorAttachmentCount = 1;
+//     subpass.pColorAttachments = &colorAttachmentRef;
+//     subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
-    VkSubpassDependency dependency{};
-    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependency.dstSubpass = 0;
-    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+//     VkSubpassDependency dependency{};
+//     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+//     dependency.dstSubpass = 0;
+//     dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+//     dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+//     dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+//     dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-    std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
-    VkRenderPassCreateInfo renderPassInfo{};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-    renderPassInfo.pAttachments = attachments.data();
-    renderPassInfo.subpassCount = 1;
-    renderPassInfo.pSubpasses = &subpass;
-    renderPassInfo.pDependencies = &dependency;
+//     std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
+//     VkRenderPassCreateInfo renderPassInfo{};
+//     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+//     renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+//     renderPassInfo.pAttachments = attachments.data();
+//     renderPassInfo.subpassCount = 1;
+//     renderPassInfo.pSubpasses = &subpass;
+//     renderPassInfo.pDependencies = &dependency;
 
-    if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
-        throw std::runtime_error("Failed to create render pass.");
-}
+//     if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
+//         throw std::runtime_error("Failed to create render pass.");
+// }
 
-void ParticleSystemApplication::createFramebuffers()
-{
-    swapChainFramebuffers.resize(swapChainImageViews.size());
-    for (size_t i = 0; i < swapChainImageViews.size(); i++)
-    {
-        std::array<VkImageView, 2> attachments = {
-            swapChainImageViews[i],
-            depthImageView
-        };
+// void ParticleSystemApplication::createFramebuffers()
+// {
+//     swapChainFramebuffers.resize(swapChainImageViews.size());
+//     for (size_t i = 0; i < swapChainImageViews.size(); i++)
+//     {
+//         std::array<VkImageView, 2> attachments = {
+//             swapChainImageViews[i],
+//             depthImageView
+//         };
 
-        VkFramebufferCreateInfo framebufferInfo{};
-        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        framebufferInfo.renderPass = renderPass;
-        framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());;
-        framebufferInfo.pAttachments = attachments.data();
-        framebufferInfo.width = swapChainExtent.width;
-        framebufferInfo.height = swapChainExtent.height;
-        framebufferInfo.layers = 1;
+//         VkFramebufferCreateInfo framebufferInfo{};
+//         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+//         framebufferInfo.renderPass = renderPass;
+//         framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());;
+//         framebufferInfo.pAttachments = attachments.data();
+//         framebufferInfo.width = swapChainExtent.width;
+//         framebufferInfo.height = swapChainExtent.height;
+//         framebufferInfo.layers = 1;
 
-        if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
-            throw std::runtime_error("Failed to create framebuffer.");
-    }
-}
+//         if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
+//             throw std::runtime_error("Failed to create framebuffer.");
+//     }
+// }
 
 
 void ParticleSystemApplication::createCommandPool()
@@ -906,6 +934,51 @@ void ParticleSystemApplication::createCommandBuffer()
 
 }
 
+void ParticleSystemApplication::transition_image_layout
+(
+    VkCommandBuffer commandBuffer,
+    VkImage targetImage,
+    VkImageLayout oldLayout,
+    VkImageLayout newLayout,
+    VkAccessFlags2 srcAccessMask,
+    VkAccessFlags2 dstAccessMask,
+    VkPipelineStageFlags2 srcStageMask,
+    VkPipelineStageFlags2 dstStageMask,
+    uint imageAspectFlags
+)
+{
+    VkImageMemoryBarrier2 barrier{};
+    
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+    barrier.pNext = nullptr;
+    barrier.srcStageMask = srcStageMask;
+    barrier.srcAccessMask = srcAccessMask;
+    barrier.dstStageMask = dstStageMask;
+    barrier.dstAccessMask = dstAccessMask;
+    barrier.oldLayout = oldLayout;
+    barrier.newLayout = newLayout;
+    barrier.image = targetImage;
+    barrier.subresourceRange =
+    {
+        .aspectMask = imageAspectFlags,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1
+    };
+
+    VkDependencyInfo dependencyInfo{};
+    
+    dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+    dependencyInfo.pNext = nullptr;
+    dependencyInfo.dependencyFlags = {};
+    dependencyInfo.imageMemoryBarrierCount = 1;
+    dependencyInfo.pImageMemoryBarriers = &barrier;
+
+    vkCmdPipelineBarrier2(commandBuffer, &dependencyInfo);
+
+}
+
 void ParticleSystemApplication::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
     VkCommandBufferBeginInfo beginInfo{};
@@ -916,23 +989,98 @@ void ParticleSystemApplication::recordCommandBuffer(VkCommandBuffer commandBuffe
     if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
         throw std::runtime_error("Failed to begin recording command buffer.");
 
-    VkRenderPassBeginInfo renderPassInfo{};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassInfo.renderPass = renderPass;
-    renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
-    renderPassInfo.renderArea.offset = {0, 0};
-    renderPassInfo.renderArea.extent = swapChainExtent;
+    transition_image_layout
+    (
+        commandBuffer,
+        swapChainImages[imageIndex],
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        {},
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_IMAGE_ASPECT_COLOR_BIT
+    );
+    // VkImageMemoryBarrier image_memory_barrier{};
+    //     image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    //     image_memory_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    //     image_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    //     image_memory_barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    //     image_memory_barrier.image = swapChainImages[imageIndex];
+    //     image_memory_barrier.subresourceRange = {
+    //     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+    //     .baseMipLevel = 0,
+    //     .levelCount = 1,
+    //     .baseArrayLayer = 0,
+    //     .layerCount = 1,
+    //     };
 
+    // vkCmdPipelineBarrier(
+    //     commandBuffer,
+    //     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,  // srcStageMask
+    //     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // dstStageMask
+    //     0,
+    //     0,
+    //     nullptr,
+    //     0,
+    //     nullptr,
+    //     1, // imageMemoryBarrierCount
+    //     &image_memory_barrier // pImageMemoryBarriers
+    // );
+
+    transition_image_layout
+    (
+        commandBuffer,
+        depthImage,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
+        VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+        VK_IMAGE_ASPECT_DEPTH_BIT
+    );
     std::array<VkClearValue, 2> clearValues{};
     clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
     clearValues[1].depthStencil = {1.0f, 0};
 
-    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-    renderPassInfo.pClearValues = clearValues.data();
+    VkRenderingAttachmentInfo colorAttachmentInfo{};
+    colorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    colorAttachmentInfo.imageView = swapChainImageViews[imageIndex];
+    colorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+    colorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachmentInfo.clearValue = clearValues[0];
 
-    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    VkRenderingAttachmentInfo depthAttachmentInfo{};
+    depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    depthAttachmentInfo.imageView = depthImageView;
+    depthAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachmentInfo.clearValue = clearValues[1];
+
+    VkRenderingInfo renderingInfo{};
+    renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+    renderingInfo.renderArea = { .offset = { 0, 0 }, .extent = swapChainExtent };
+    renderingInfo.layerCount = 1;
+    renderingInfo.colorAttachmentCount = 1;
+    renderingInfo.pColorAttachments = &colorAttachmentInfo;
+    renderingInfo.pDepthAttachment = &depthAttachmentInfo;
+
+    // VkRenderPassBeginInfo renderPassInfo{};
+    // renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    // renderPassInfo.renderPass = renderPass;
+    // renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
+    // renderPassInfo.renderArea.offset = {0, 0};
+    // renderPassInfo.renderArea.extent = swapChainExtent;
+
+    // renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    // renderPassInfo.pClearValues = clearValues.data();
+
+    vkCmdBeginRendering(commandBuffer, &renderingInfo);
+    // vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-    
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
@@ -954,7 +1102,35 @@ void ParticleSystemApplication::recordCommandBuffer(VkCommandBuffer commandBuffe
 
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
     vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-    vkCmdEndRenderPass(commandBuffer);
+    // vkCmdEndRenderPass(commandBuffer);
+
+    vkCmdEndRendering(commandBuffer);
+
+    transition_image_layout
+    (
+        commandBuffer,
+        swapChainImages[imageIndex],
+        VkImageLayout::VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VkImageLayout::VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_ACCESS_2_NONE_KHR,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_2_NONE_KHR,
+        VK_IMAGE_ASPECT_COLOR_BIT
+    );
+
+    // transition_image_layout
+    // (
+    //     commandBuffer,
+    //     swapChainImages[imageIndex],
+    //     VkImageLayout::VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    //     VkImageLayout::VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+    //     VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+    //     VK_ACCESS_2_NONE_KHR,
+    //     VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+    //     VK_PIPELINE_STAGE_2_NONE_KHR,
+    //     VK_IMAGE_ASPECT_COLOR_BIT
+    // );
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
         throw std::runtime_error("Failed to record command buffer.");
@@ -1093,7 +1269,8 @@ uint32_t ParticleSystemApplication::findMemoryType(uint32_t typeFilter, VkMemory
     throw std::runtime_error("Failed to find suitable memory type.");
 }
 
-void ParticleSystemApplication::createIndexBuffer() {
+void ParticleSystemApplication::createIndexBuffer()
+{
     VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
     VkBuffer stagingBuffer;
@@ -1288,7 +1465,7 @@ void ParticleSystemApplication::initVulkan()
     createLogicalDevice();
     createSwapChain();
     createImageViews();
-    createRenderPass();
+    // createRenderPass();
     createComputeDescriptorSetLayout();
     createDescriptorSetLayout();
     createGraphicsPipeline();
@@ -1296,7 +1473,7 @@ void ParticleSystemApplication::initVulkan()
     createCommandPool();
     createDepthResources();  
 
-    createFramebuffers();
+    // createFramebuffers();
     createVertexBuffer();  
     createIndexBuffer();
     createStorageBuffers();
@@ -1489,6 +1666,7 @@ void ParticleSystemApplication::drawFrame()
     vkResetCommandBuffer(commandBuffer[currentFrame], 0);
     recordCommandBuffer(commandBuffer[currentFrame], imageIndex);
 
+
     VkSubmitInfo submitInfo{};
 
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1569,8 +1747,8 @@ void ParticleSystemApplication::cleanup()
     
     vkDestroyCommandPool(device, commandPool, nullptr);
 
-    for (auto framebuffer : swapChainFramebuffers)
-        vkDestroyFramebuffer(device, framebuffer, nullptr);
+    // for (auto framebuffer : swapChainFramebuffers)
+    //     vkDestroyFramebuffer(device, framebuffer, nullptr);
 
     for (size_t i = 0; i < kNumberOfFramesInFlight; i++)
     {
@@ -1585,7 +1763,7 @@ void ParticleSystemApplication::cleanup()
     vkDestroyPipelineLayout(device, graphicsPipelineLayout, nullptr);
     vkDestroyPipeline(device, computePipeline, nullptr);
     vkDestroyPipelineLayout(device, computePipelineLayout, nullptr);
-    vkDestroyRenderPass(device, renderPass, nullptr);
+    // vkDestroyRenderPass(device, renderPass, nullptr);
 
     vkDestroyImageView(device, depthImageView, nullptr);
     vkDestroyImage(device, depthImage, nullptr);
