@@ -29,7 +29,8 @@ SHADERSRCS := triangle/shader.vert \
 SHADERSPV := $(patsubst %,$(SHADERDIR)/%.spv, $(strip $(SHADERSRCS)))
 
 
-INCS := ./include/
+INCS := ./include/ 
+PATH_TO_STB := /usr/include
 
 _GREY		= \033[30m
 _RED		= \033[31m
@@ -48,13 +49,13 @@ debug: CPPFLAGS += -g -UNDEBUG
 debug: $(NAME)
 
 $(NAME): $(OBJS) Makefile
-	$(CC) $(CPPFLAGS) -o $(NAME) $(OBJS) $(LDFLAGS)
+	$(CC) $(CPPFLAGS) -o $(NAME) $(OBJS) $(LDFLAGS) -I$(PATH_TO_STB)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	@if [ ! -d $(dir $@) ]; then \
 		mkdir -p $(dir $@); \
 	fi
-	$(CC) $(CPPFLAGS) -o $@ -c $< -I$(INCS)
+	$(CC) $(CPPFLAGS) -o $@ -c $< -I$(INCS) -I$(PATH_TO_STB)
 
 $(SHADERDIR)/%.spv: $(SHADERDIR)/%
 	glslc $< -o $@
