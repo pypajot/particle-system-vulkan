@@ -4,13 +4,24 @@
 #include <cstring>
 #include <map>
 #include <unordered_set>
+#include <unordered_map>
 #include <limits>
 #include <algorithm>
 #include <fstream>
 #include <glm/gtc/matrix_transform.hpp>
 
-#define STB_IMAGE_IMPLEMENTATION
+#ifndef STB_IMAGE_IMPLEMENTATION
+    #define STB_IMAGE_IMPLEMENTATION
+#endif
+
 #include <stb/stb_image.h>
+
+#ifndef TINYOBJLOADER_IMPLEMENTATION
+    #define TINYOBJLOADER_IMPLEMENTATION
+#endif
+
+#include <tiny_obj_loader.h>
+
 
 void testFun()
 {
@@ -486,12 +497,60 @@ void ParticleSystemApplication::copyBufferToImage(VkBuffer buffer, VkImage image
 
 }
 
+void ParticleSystemApplication::loadModel()
+{
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> materials;
+    std::string warn;
+    std::string err;
+
+    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str()))
+        throw std::runtime_error(err);
+
+    std::unordered_map<Vertex, uint32_t> uniqueVertices;
+
+    for (const auto& shape : shapes)
+    {
+        for (const auto& index : shape.mesh.indices)
+        {
+            Vertex vertex{};
+
+            vertex.pos =
+            {
+                attrib.vertices[3 * index.vertex_index + 0],
+                attrib.vertices[3 * index.vertex_index + 1],
+                attrib.vertices[3 * index.vertex_index + 2]
+            };
+
+            vertex.texCoord =
+            {
+                attrib.texcoords[2 * index.texcoord_index + 0],
+                attrib.texcoords[2 * index.texcoord_index + 1]
+            };
+
+            vertex.normal =
+            {
+                attrib.normals[3 * index.normal_index + 0],
+                attrib.normals[3 * index.normal_index + 1],
+                attrib.normals[3 * index.normal_index + 2]
+            };
+
+            if (!uniqueVertices.count(vertex))
+            {
+                vertices.push_back(vertex);
+                uniqueVertices[vertex] = uniqueVertices.size();
+            }
+            indices.push_back(uniqueVertices[vertex]);
+        }
+    }
+}
 
 void ParticleSystemApplication::createTextureImage()
 {
     int texWidth, texHeight, texChannels;
 
-    stbi_uc* pixels = stbi_load("textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
     if (!pixels)
@@ -563,6 +622,54 @@ void ParticleSystemApplication::createTextureSampler()
 
     if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS)
         throw std::runtime_error("failed to create texture sampler!");
+}
+
+void ParticleSystemApplication::createBumpImage()
+{
+    int texWidth, texHeight, texChannels;
+
+    stbi_uc* pixels = stbi_load(BUMP_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    VkDeviceSize imageSize = texWidth * texHeight * 4;
+
+    if (!pixels)
+        throw std::runtime_error("failed to load bump image!");
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    
+    createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+    void* data;
+    vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+    memcpy(data, pixels, static_cast<size_t>(imageSize));
+    vkUnmapMemory(device, stagingBufferMemory);
+    
+    stbi_image_free(pixels);
+
+    createImage
+    (
+        texWidth,
+        texHeight,
+        VK_FORMAT_R8G8B8A8_SRGB,
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        bumpImage,
+        bumpImageMemory
+    );
+
+    transitionImageLayout(bumpImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    copyBufferToImage(stagingBuffer, bumpImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+    transitionImageLayout(bumpImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    vkDestroyBuffer(device, stagingBuffer, nullptr);
+    vkFreeMemory(device, stagingBufferMemory, nullptr);
+}
+
+void ParticleSystemApplication::createBumpImageView()
+{
+    bumpImageView = createImageView(bumpImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+    std::cout << (bumpImageView == VK_NULL_HANDLE) << "\n";
 }
 
 int ParticleSystemApplication::rateDeviceSuitability(VkPhysicalDevice device)
@@ -1216,7 +1323,7 @@ void ParticleSystemApplication::recordCommandBuffer(VkCommandBuffer commandBuffe
     VkBuffer vertexBuffers[] = {vertexBuffer};
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
     vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
@@ -1389,21 +1496,38 @@ void ParticleSystemApplication::createIndexBuffer()
 
 void ParticleSystemApplication::createDescriptorSetLayout()
 {
-    VkDescriptorSetLayoutBinding uboLayoutBinding{};
-    uboLayoutBinding.binding = 0;
-    uboLayoutBinding.descriptorCount = 1;
-    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    uboLayoutBinding.pImmutableSamplers = nullptr;
-    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    std::array<VkDescriptorSetLayoutBinding, 4> bindings;
 
-    VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-    samplerLayoutBinding.binding = 1;
-    samplerLayoutBinding.descriptorCount = 1;
-    samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    samplerLayoutBinding.pImmutableSamplers = nullptr;
-    samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    // VkDescriptorSetLayoutBinding uboLayoutBinding{};
+    bindings[0].binding = 0;
+    bindings[0].descriptorCount = 1;
+    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    bindings[0].pImmutableSamplers = nullptr;
+    bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
+    // VkDescriptorSetLayoutBinding sceneDataLayoutBinding{};
+    bindings[1].binding = 1;
+    bindings[1].descriptorCount = 1;
+    bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    bindings[1].pImmutableSamplers = nullptr;
+    bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    // VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+    bindings[2].binding = 2;
+    bindings[2].descriptorCount = 1;
+    bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[2].pImmutableSamplers = nullptr;
+    bindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    bindings[3].binding = 3;
+    bindings[3].descriptorCount = 1;
+    bindings[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[3].pImmutableSamplers = nullptr;
+    bindings[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    // bindings[0] = uboLayoutBinding;
+    // bindings[1] = sceneDataLayoutBinding;
+    // bindings[2] = samplerLayoutBinding;
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -1447,7 +1571,7 @@ void ParticleSystemApplication::createComputeDescriptorSetLayout()
 
 void ParticleSystemApplication::createUniformBuffers()
 {
-    VkDeviceSize bufferSize = sizeof(test);
+    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
     uniformBuffers.resize(kNumberOfFramesInFlight);
     uniformBuffersMemory.resize(kNumberOfFramesInFlight);
@@ -1461,11 +1585,27 @@ void ParticleSystemApplication::createUniformBuffers()
     }
 }
 
+void ParticleSystemApplication::createSceneDataBuffers()
+{
+    VkDeviceSize bufferSize = sizeof(SceneData);
+
+    sceneDataBuffers.resize(kNumberOfFramesInFlight);
+    sceneDataBuffersMemory.resize(kNumberOfFramesInFlight);
+    sceneDataBuffersMapped.resize(kNumberOfFramesInFlight);
+
+    for (size_t i = 0; i < kNumberOfFramesInFlight; i++)
+    {
+        createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sceneDataBuffers[i], sceneDataBuffersMemory[i]);
+
+        vkMapMemory(device, sceneDataBuffersMemory[i], 0, bufferSize, 0, &sceneDataBuffersMapped[i]);
+    }
+}
+
 void ParticleSystemApplication::createDescriptorPool()
 {
     std::array<VkDescriptorPoolSize, 3> poolSizes{};
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSizes[0].descriptorCount = static_cast<uint32_t>(kNumberOfFramesInFlight) * 2;
+    poolSizes[0].descriptorCount = static_cast<uint32_t>(kNumberOfFramesInFlight) * 4;
 
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSizes[1].descriptorCount = static_cast<uint32_t>(kNumberOfFramesInFlight) * 2;
@@ -1478,7 +1618,11 @@ void ParticleSystemApplication::createDescriptorPool()
     poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
     poolInfo.pPoolSizes = poolSizes.data();
 
-    poolInfo.maxSets = static_cast<uint32_t>(kNumberOfFramesInFlight) * static_cast<uint32_t>(poolSizes.size()) * 2;
+    poolInfo.maxSets = 0;
+    for (const auto &poolSize: poolSizes)
+    {
+        poolInfo.maxSets += poolSize.descriptorCount;
+    }
 
     if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
         throw std::runtime_error("failed to create descriptor pool!");
@@ -1513,12 +1657,12 @@ void ParticleSystemApplication::createDescriptorSets()
 
     for (size_t i = 0; i < kNumberOfFramesInFlight; i++)
     {
+        std::array<VkWriteDescriptorSet, 6> descriptorWrites{};
+
         VkDescriptorBufferInfo uniformBufferInfo{};
         uniformBufferInfo.buffer = uniformBuffers[i];
         uniformBufferInfo.offset = 0;
-        uniformBufferInfo.range = sizeof(test);
-
-        std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
+        uniformBufferInfo.range = sizeof(UniformBufferObject);
 
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = descriptorSets[i];
@@ -1530,45 +1674,76 @@ void ParticleSystemApplication::createDescriptorSets()
         descriptorWrites[0].pImageInfo = nullptr;
         descriptorWrites[0].pTexelBufferView = nullptr;
 
-        VkDescriptorImageInfo imageInfo{};
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageInfo.imageView = textureImageView;
-        imageInfo.sampler = textureSampler;
+        VkDescriptorBufferInfo sceneDataBufferInfo{};
+        sceneDataBufferInfo.buffer = sceneDataBuffers[i];
+        sceneDataBufferInfo.offset = 0;
+        sceneDataBufferInfo.range = sizeof(SceneData);
 
         descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[1].dstSet = descriptorSets[i];
         descriptorWrites[1].dstBinding = 1;
         descriptorWrites[1].dstArrayElement = 0;
-        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptorWrites[1].descriptorCount = 1;
-        descriptorWrites[1].pImageInfo = &imageInfo;
+        descriptorWrites[1].pBufferInfo = &sceneDataBufferInfo;
+        descriptorWrites[1].pImageInfo = nullptr;
+        descriptorWrites[1].pTexelBufferView = nullptr;
+
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageView = textureImageView;
+        imageInfo.sampler = textureSampler;
+
+        descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[2].dstSet = descriptorSets[i];
+        descriptorWrites[2].dstBinding = 2;
+        descriptorWrites[2].dstArrayElement = 0;
+        descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[2].descriptorCount = 1;
+        descriptorWrites[2].pImageInfo = &imageInfo;
+
+        VkDescriptorImageInfo bumpImageInfo{};
+        bumpImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        bumpImageInfo.imageView = bumpImageView;
+        bumpImageInfo.sampler = textureSampler;
+
+        descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[3].dstSet = descriptorSets[i];
+        descriptorWrites[3].dstBinding = 3;
+        descriptorWrites[3].dstArrayElement = 0;
+        descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[3].descriptorCount = 1;
+        descriptorWrites[3].pImageInfo = &bumpImageInfo;
+        
+        std::cout << (descriptorWrites[3].pImageInfo[0].imageView == VK_NULL_HANDLE) << "\n";
 
         VkDescriptorBufferInfo storageBufferInfoLastFrame{};
         storageBufferInfoLastFrame.buffer = shaderStorageBuffers[(i - 1) % kNumberOfFramesInFlight];
         storageBufferInfoLastFrame.offset = 0;
         storageBufferInfoLastFrame.range = sizeof(Particle) * PARTICLE_NUMBER;
 
-        descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[2].dstSet = computeDescriptorSets[i];
-        descriptorWrites[2].dstBinding = 1;
-        descriptorWrites[2].dstArrayElement = 0;
-        descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptorWrites[2].descriptorCount = 1;
-        descriptorWrites[2].pBufferInfo = &storageBufferInfoLastFrame;
+        descriptorWrites[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[4].dstSet = computeDescriptorSets[i];
+        descriptorWrites[4].dstBinding = 1;
+        descriptorWrites[4].dstArrayElement = 0;
+        descriptorWrites[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrites[4].descriptorCount = 1;
+        descriptorWrites[4].pBufferInfo = &storageBufferInfoLastFrame;
 
         VkDescriptorBufferInfo storageBufferInfoCurrentFrame{};
         storageBufferInfoCurrentFrame.buffer = shaderStorageBuffers[i];
         storageBufferInfoCurrentFrame.offset = 0;
         storageBufferInfoCurrentFrame.range = sizeof(Particle) * PARTICLE_NUMBER;
 
-        descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[3].dstSet = computeDescriptorSets[i];
-        descriptorWrites[3].dstBinding = 2;
-        descriptorWrites[3].dstArrayElement = 0;
-        descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptorWrites[3].descriptorCount = 1;
-        descriptorWrites[3].pBufferInfo = &storageBufferInfoCurrentFrame;
+        descriptorWrites[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[5].dstSet = computeDescriptorSets[i];
+        descriptorWrites[5].dstBinding = 2;
+        descriptorWrites[5].dstArrayElement = 0;
+        descriptorWrites[5].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrites[5].descriptorCount = 1;
+        descriptorWrites[5].pBufferInfo = &storageBufferInfoCurrentFrame;
 
+        std::cout << (descriptorWrites[3].pImageInfo[0].imageView == VK_NULL_HANDLE) << "\n";
         vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
 }
@@ -1594,14 +1769,21 @@ void ParticleSystemApplication::initVulkan()
     createDepthResources();  
 
     // createFramebuffers();
+    loadModel();
+
     createVertexBuffer();  
     createIndexBuffer();
     createStorageBuffers();
     createUniformBuffers();  
+    createSceneDataBuffers();
 
     createTextureImage();
     createTextureImageView();
     createTextureSampler();
+
+    createBumpImage();
+    createBumpImageView();
+    // createBumpSampler();
 
     createDescriptorPool();
     createDescriptorSets();
@@ -1612,17 +1794,23 @@ void ParticleSystemApplication::initVulkan()
 
 void ParticleSystemApplication::updateUniformBuffer(uint32_t currentImage)
 {
+    float time = glfwGetTime() / 4;
     UniformBufferObject ubo{};
-    ubo.model = glm::mat4(1.0f);
-    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.model = glm::rotate(glm::mat4(1.0f), time, glm::vec3(0, 1, 0));
+    ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 10.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
     ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
     ubo.proj[1][1] *= -1;
     
-    test projj;
-    projj.p = ubo.getTransform();
+    ubo.projViewModel = ubo.proj * ubo.view * ubo.model;
 
-    memcpy(uniformBuffersMapped[currentImage], &projj, sizeof(projj));
+    memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 
+    SceneData scene{};
+    scene.ambientLight = glm::vec4(0.1f);
+    scene.sunlightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    scene.sunlightDirection = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+
+    memcpy(sceneDataBuffersMapped[currentImage], &scene, sizeof(scene));
 }
 
 VkFormat ParticleSystemApplication::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
@@ -1862,6 +2050,9 @@ void ParticleSystemApplication::cleanup()
     {
         vkDestroyBuffer(device, shaderStorageBuffers[i], nullptr);
         vkFreeMemory(device, shaderStorageBuffersMemory[i], nullptr);
+
+        vkDestroyBuffer(device, sceneDataBuffers[i], nullptr);
+        vkFreeMemory(device, sceneDataBuffersMemory[i], nullptr);
     }
 
     for (uint i = 0; i < kNumberOfFramesInFlight; i++)

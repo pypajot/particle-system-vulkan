@@ -18,21 +18,19 @@
 #define PARTICLE_NUMBER 10000
 
 
+struct SceneData
+{
+    glm::vec4 ambientLight;
+    glm::vec4 sunlightDirection;
+    glm::vec4 sunlightColor;
+};
+
 struct UniformBufferObject
 {
     glm::mat4 model;
     glm::mat4 view;
     glm::mat4 proj;
-
-    glm::mat4 getTransform()
-    {
-        return proj * view * model;
-    }
-};
-
-struct test
-{
-    glm::mat4 p;
+    glm::mat4 projViewModel;
 };
 
 struct QueueFamilyIndices
@@ -64,6 +62,10 @@ class ParticleSystemApplication
         void run();
 
     private:
+        const std::string MODEL_PATH = "models/moon.obj";
+        const std::string TEXTURE_PATH = "textures/moon_diffuse.png";
+        const std::string BUMP_PATH = "textures/moon_bump.png";
+
         const uint kNumberOfFramesInFlight = 2;
 
         GLFWwindow *window;
@@ -114,6 +116,10 @@ class ParticleSystemApplication
         std::vector<VkDeviceMemory> uniformBuffersMemory;
         std::vector<void*> uniformBuffersMapped;
 
+        std::vector<VkBuffer> sceneDataBuffers;
+        std::vector<VkDeviceMemory> sceneDataBuffersMemory;
+        std::vector<void*> sceneDataBuffersMapped;
+
 
         VkDescriptorPool descriptorPool;
         std::vector<VkDescriptorSet> descriptorSets;
@@ -126,28 +132,20 @@ class ParticleSystemApplication
         VkImage textureImage;
         VkDeviceMemory textureImageMemory;
         VkImageView textureImageView;
-        
+
         VkSampler textureSampler;
+
+        VkImage bumpImage;
+        VkDeviceMemory bumpImageMemory;
+        VkImageView bumpImageView;
+
+        VkSampler bumpSampler;
 
         uint32_t currentFrame = 0;
         glm::mat4 proj;
 
-        const std::vector<Vertex> vertices = {
-            {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-            {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-            {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-            {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-
-            {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-            {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-            {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-            {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
-        };
-
-        const std::vector<uint16_t> indices = {
-            0, 1, 2, 2, 3, 0,
-            4, 5, 6, 6, 7, 4
-        };
+        std::vector<Vertex> vertices;
+        std::vector<uint32_t> indices;
 
         const std::vector<const char*> validationLayers =
         {
@@ -216,13 +214,15 @@ class ParticleSystemApplication
         void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
         void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-
+        void loadModel();
 
         void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
         void createVertexBuffer();
         void createIndexBuffer();
         void createStorageBuffers();
         void createUniformBuffers();
+        void createSceneDataBuffers();
+
         void createDescriptorPool();
         void createDescriptorSets();
         void createDescriptorSetLayout();
@@ -240,9 +240,13 @@ class ParticleSystemApplication
         VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
         void createTextureImage();
         void createTextureImageView();
-        void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
         void createTextureSampler();
-
+        
+        void createBumpImage();
+        void createBumpImageView();
+        // void createBumpSampler();
+        
+        void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
         void initParticleBuffers();
         

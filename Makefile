@@ -46,7 +46,7 @@ _NO_COLOR	= \033[0m
 all : shader $(NAME)
 
 debug: CPPFLAGS += -g -UNDEBUG
-debug: $(NAME)
+debug: shader $(NAME)
 
 $(NAME): $(OBJS) Makefile
 	$(CC) $(CPPFLAGS) -o $(NAME) $(OBJS) $(LDFLAGS) -I$(PATH_TO_STB)
