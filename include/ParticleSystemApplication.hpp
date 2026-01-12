@@ -15,7 +15,7 @@
 #define BASE_WIN_HEIGHT 1080
 #define BASE_WIN_WIDTH 1920
 
-#define PARTICLE_NUMBER 65536
+#define PARTICLE_NUMBER 1048576
 
 
 struct SceneData
@@ -86,16 +86,24 @@ class ParticleSystemApplication
 
         // VkRenderPass renderPass;
         VkDescriptorSetLayout descriptorSetLayout;
+
         VkPipelineLayout graphicsPipelineLayout;
         VkPipeline graphicsPipeline;
+
+        VkPipelineLayout particleGraphicsPipelineLayout;
+        VkPipeline particleGraphicsPipeline;
 
         VkDescriptorSetLayout particleInitDescriptorSetLayout;
 
         VkPipelineLayout particleInitPipelineLayout;
         VkPipeline particleInitPipeline;
 
+        VkDescriptorSetLayout particleUpdateDescriptorSetLayout;
 
-        // std::vector<VkFramebuffer> swapChainFramebuffers;
+        VkPipelineLayout particleUpdatePipelineLayout;
+        VkPipeline particleUpdatePipeline;
+
+        // std::vector<VkFramebuffer> swapChainFramebuffers;init
 
         VkCommandPool commandPool;
         std::vector<VkCommandBuffer> commandBuffer;
@@ -151,6 +159,8 @@ class ParticleSystemApplication
 
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
+
+        bool particleNeedReset = true;
 
         const std::vector<const char*> validationLayers =
         {
@@ -212,7 +222,9 @@ class ParticleSystemApplication
         void createImageViews();
         // void createRenderPass();
         void createGraphicsPipeline();
+        void createParticleGraphicsPipeline();
         void createParticleInitPipeline();
+        void createParticleUpdatePipeline();
         // void createFramebuffers();
         void createCommandPool();
         void createCommandBuffer();
@@ -254,9 +266,10 @@ class ParticleSystemApplication
         
         void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
-        void recordParticleInitCommandBuffer(VkCommandBuffer commandBuffer);
+        void recordComputeCommandBuffer(VkCommandBuffer commandBuffer, VkPipeline computePipeline, VkPipelineLayout computePipelineLayout);
 
         void resetParticle();
+        void updateParticles();
         void drawFrame();
 
         void createSyncObjects();

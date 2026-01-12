@@ -24,7 +24,10 @@ SHADERDIR := shaders
 
 SHADERSRCS := triangle/shader.vert \
 			  triangle/shader.frag \
-			  particle/init.comp
+			  particle/shader.vert \
+			  particle/shader.frag \
+			  particle/init.comp \
+			  particle/update.comp
 
 SHADERSPV := $(patsubst %,$(SHADERDIR)/%.spv, $(strip $(SHADERSRCS)))
 
