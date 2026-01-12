@@ -15,7 +15,7 @@
 #define BASE_WIN_HEIGHT 1080
 #define BASE_WIN_WIDTH 1920
 
-#define PARTICLE_NUMBER 10000
+#define PARTICLE_NUMBER 65536
 
 
 struct SceneData
@@ -74,7 +74,7 @@ class ParticleSystemApplication
         VkSurfaceKHR surface;
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
         VkDevice device;
-        VkQueue graphicsQueue;
+        VkQueue graphicsAndComputeQueue;
         VkQueue presentQueue;
 
         VkSwapchainKHR swapChain;
@@ -89,19 +89,26 @@ class ParticleSystemApplication
         VkPipelineLayout graphicsPipelineLayout;
         VkPipeline graphicsPipeline;
 
-        VkDescriptorSetLayout computeDescriptorSetLayout;
-        VkPipelineLayout computePipelineLayout;
-        VkPipeline computePipeline;
+        VkDescriptorSetLayout particleInitDescriptorSetLayout;
+
+        VkPipelineLayout particleInitPipelineLayout;
+        VkPipeline particleInitPipeline;
 
 
         // std::vector<VkFramebuffer> swapChainFramebuffers;
 
         VkCommandPool commandPool;
         std::vector<VkCommandBuffer> commandBuffer;
+        std::vector<VkCommandBuffer> computeCommandBuffer;
+
+
 
         std::vector<VkSemaphore> imageAvailableSemaphore;
         std::vector<VkSemaphore> renderFinishedSemaphore;
         std::vector<VkFence> inFlightFence;
+
+        std::vector<VkSemaphore> computeFinishedSemaphore;
+        std::vector<VkFence> computeInFlightFences;
 
         VkBuffer vertexBuffer;
         VkDeviceMemory vertexBufferMemory;
@@ -138,8 +145,6 @@ class ParticleSystemApplication
         VkImage bumpImage;
         VkDeviceMemory bumpImageMemory;
         VkImageView bumpImageView;
-
-        VkSampler bumpSampler;
 
         uint32_t currentFrame = 0;
         glm::mat4 proj;
@@ -207,7 +212,7 @@ class ParticleSystemApplication
         void createImageViews();
         // void createRenderPass();
         void createGraphicsPipeline();
-        void createComputePipeline();
+        void createParticleInitPipeline();
         // void createFramebuffers();
         void createCommandPool();
         void createCommandBuffer();
@@ -238,24 +243,26 @@ class ParticleSystemApplication
 
         void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
         VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+
+        void createTextureSampler();
+
         void createTextureImage();
         void createTextureImageView();
-        void createTextureSampler();
         
         void createBumpImage();
         void createBumpImageView();
-        // void createBumpSampler();
         
         void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
-        void initParticleBuffers();
-        
+        void recordParticleInitCommandBuffer(VkCommandBuffer commandBuffer);
+
+        void resetParticle();
         void drawFrame();
 
         void createSyncObjects();
 
         VkCommandBuffer beginSingleTimeCommands();
-        void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+        void endSingleTimeCommands(VkCommandBuffer commandBuffer, VkQueue submitQueue);
         void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 
         VkShaderModule createShaderModule(const std::vector<char>& code);

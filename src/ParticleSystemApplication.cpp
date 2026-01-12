@@ -493,7 +493,7 @@ void ParticleSystemApplication::copyBufferToImage(VkBuffer buffer, VkImage image
         &region
     );
 
-    endSingleTimeCommands(commandBuffer);
+    endSingleTimeCommands(commandBuffer, graphicsAndComputeQueue);
 
 }
 
@@ -669,7 +669,6 @@ void ParticleSystemApplication::createBumpImage()
 void ParticleSystemApplication::createBumpImageView()
 {
     bumpImageView = createImageView(bumpImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-    std::cout << (bumpImageView == VK_NULL_HANDLE) << "\n";
 }
 
 int ParticleSystemApplication::rateDeviceSuitability(VkPhysicalDevice device)
@@ -801,7 +800,7 @@ void ParticleSystemApplication::createLogicalDevice()
     if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS)
         throw std::runtime_error("Failed to create logical device.");
 
-    vkGetDeviceQueue(device, indices.graphicsAndComputeFamily.value(), 0, &graphicsQueue);
+    vkGetDeviceQueue(device, indices.graphicsAndComputeFamily.value(), 0, &graphicsAndComputeQueue);
     vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 }
 
@@ -1013,7 +1012,7 @@ void ParticleSystemApplication::createGraphicsPipeline()
     vkDestroyShaderModule(device, fragShaderModule, nullptr);
 }
 
-void ParticleSystemApplication::createComputePipeline()
+void ParticleSystemApplication::createParticleInitPipeline()
 {
     auto computeShaderCode = readFile("shaders/particle/init.comp.spv");
 
@@ -1028,105 +1027,23 @@ void ParticleSystemApplication::createComputePipeline()
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pSetLayouts = &computeDescriptorSetLayout;
+    pipelineLayoutInfo.pSetLayouts = &particleInitDescriptorSetLayout;
 
-    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &computePipelineLayout) != VK_SUCCESS)
-        throw std::runtime_error("Failed to create compute pipeline layout.");
+    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &particleInitPipelineLayout) != VK_SUCCESS)
+        throw std::runtime_error("Failed to create particle init pipeline layout.");
         
     VkComputePipelineCreateInfo pipelineInfo{};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    pipelineInfo.layout = computePipelineLayout;
+    pipelineInfo.layout = particleInitPipelineLayout;
     pipelineInfo.stage = computeShaderStageInfo;
 
-    if (vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &computePipeline) != VK_SUCCESS)
-        throw std::runtime_error("Failed to create compute pipeline.");
+    if (vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &particleInitPipeline) != VK_SUCCESS)
+        throw std::runtime_error("Failed to create particle init pipeline.");
     
     vkDestroyShaderModule(device, computeShaderModule, nullptr);
 
 
 }
-
-
-// void ParticleSystemApplication::createRenderPass()
-// {
-//     VkAttachmentDescription depthAttachment{};
-//     depthAttachment.format = findDepthFormat();
-//     depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-//     depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-//     depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-//     depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-//     depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-//     depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-//     depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-//     VkAttachmentReference depthAttachmentRef{};
-//     depthAttachmentRef.attachment = 1;
-//     depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-//     VkAttachmentDescription colorAttachment{};
-//     colorAttachment.format = swapChainImageFormat;
-//     colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-//     colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-//     colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-//     colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-//     colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-//     colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-//     colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-//     VkAttachmentReference colorAttachmentRef{};
-//     colorAttachmentRef.attachment = 0;
-//     colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-//     VkSubpassDescription subpass{};
-//     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-//     subpass.colorAttachmentCount = 1;
-//     subpass.pColorAttachments = &colorAttachmentRef;
-//     subpass.pDepthStencilAttachment = &depthAttachmentRef;
-
-//     VkSubpassDependency dependency{};
-//     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-//     dependency.dstSubpass = 0;
-//     dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-//     dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-//     dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-//     dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-//     std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
-//     VkRenderPassCreateInfo renderPassInfo{};
-//     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-//     renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-//     renderPassInfo.pAttachments = attachments.data();
-//     renderPassInfo.subpassCount = 1;
-//     renderPassInfo.pSubpasses = &subpass;
-//     renderPassInfo.pDependencies = &dependency;
-
-//     if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
-//         throw std::runtime_error("Failed to create render pass.");
-// }
-
-// void ParticleSystemApplication::createFramebuffers()
-// {
-//     swapChainFramebuffers.resize(swapChainImageViews.size());
-//     for (size_t i = 0; i < swapChainImageViews.size(); i++)
-//     {
-//         std::array<VkImageView, 2> attachments = {
-//             swapChainImageViews[i],
-//             depthImageView
-//         };
-
-//         VkFramebufferCreateInfo framebufferInfo{};
-//         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-//         framebufferInfo.renderPass = renderPass;
-//         framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());;
-//         framebufferInfo.pAttachments = attachments.data();
-//         framebufferInfo.width = swapChainExtent.width;
-//         framebufferInfo.height = swapChainExtent.height;
-//         framebufferInfo.layers = 1;
-
-//         if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
-//             throw std::runtime_error("Failed to create framebuffer.");
-//     }
-// }
 
 
 void ParticleSystemApplication::createCommandPool()
@@ -1147,6 +1064,7 @@ void ParticleSystemApplication::createCommandPool()
 void ParticleSystemApplication::createCommandBuffer()
 {
     commandBuffer.resize(kNumberOfFramesInFlight);
+    computeCommandBuffer.resize(kNumberOfFramesInFlight);
 
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1155,6 +1073,9 @@ void ParticleSystemApplication::createCommandBuffer()
     allocInfo.commandBufferCount = kNumberOfFramesInFlight;
 
     if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffer.data()) != VK_SUCCESS)
+        throw std::runtime_error("Failed to allocate command buffers.");
+
+    if (vkAllocateCommandBuffers(device, &allocInfo, computeCommandBuffer.data()) != VK_SUCCESS)
         throw std::runtime_error("Failed to allocate command buffers.");
 
 }
@@ -1366,7 +1287,10 @@ void ParticleSystemApplication::createSyncObjects()
     imageAvailableSemaphore.resize(kNumberOfFramesInFlight);
     renderFinishedSemaphore.resize(swapChainImages.size());
     inFlightFence.resize(kNumberOfFramesInFlight);
-    
+
+    computeFinishedSemaphore.resize(kNumberOfFramesInFlight);
+    computeInFlightFences.resize(kNumberOfFramesInFlight);
+
     VkSemaphoreCreateInfo semaphoreInfo{};
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
@@ -1377,8 +1301,12 @@ void ParticleSystemApplication::createSyncObjects()
     for (uint i = 0; i < kNumberOfFramesInFlight; i++)
     {
         if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore[i]) != VK_SUCCESS ||
-            vkCreateFence(device, &fenceInfo, nullptr, &inFlightFence[i]) != VK_SUCCESS)
+            vkCreateFence(device, &fenceInfo, nullptr, &inFlightFence[i]) != VK_SUCCESS )
             throw std::runtime_error("Failed to create semaphores.");
+
+        if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &computeFinishedSemaphore[i]) != VK_SUCCESS ||
+            vkCreateFence(device, &fenceInfo, nullptr, &computeInFlightFences[i]) != VK_SUCCESS)
+            throw std::runtime_error("Failed to create compute semaphores.");
     }
 
     for (uint i = 0; i < swapChainImages.size(); i++)
@@ -1423,7 +1351,7 @@ void ParticleSystemApplication::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffe
     copyRegion.size = size;
     vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
-    endSingleTimeCommands(commandBuffer);
+    endSingleTimeCommands(commandBuffer, graphicsAndComputeQueue);
 }
 
 void ParticleSystemApplication::createVertexBuffer()
@@ -1564,7 +1492,7 @@ void ParticleSystemApplication::createComputeDescriptorSetLayout()
     layoutInfo.bindingCount = 3;
     layoutInfo.pBindings = layoutBindings.data();
 
-    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &computeDescriptorSetLayout) != VK_SUCCESS)
+    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &particleInitDescriptorSetLayout) != VK_SUCCESS)
         throw std::runtime_error("Failed to create compute descriptor set layout.");
 }
 
@@ -1632,7 +1560,7 @@ void ParticleSystemApplication::createDescriptorPool()
 void ParticleSystemApplication::createDescriptorSets()
 {
     std::vector<VkDescriptorSetLayout> layouts(kNumberOfFramesInFlight, descriptorSetLayout);
-    std::vector<VkDescriptorSetLayout> computeLayouts(kNumberOfFramesInFlight, computeDescriptorSetLayout);
+    std::vector<VkDescriptorSetLayout> computeLayouts(kNumberOfFramesInFlight, particleInitDescriptorSetLayout);
 
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1715,8 +1643,6 @@ void ParticleSystemApplication::createDescriptorSets()
         descriptorWrites[3].descriptorCount = 1;
         descriptorWrites[3].pImageInfo = &bumpImageInfo;
         
-        std::cout << (descriptorWrites[3].pImageInfo[0].imageView == VK_NULL_HANDLE) << "\n";
-
         VkDescriptorBufferInfo storageBufferInfoLastFrame{};
         storageBufferInfoLastFrame.buffer = shaderStorageBuffers[(i - 1) % kNumberOfFramesInFlight];
         storageBufferInfoLastFrame.offset = 0;
@@ -1743,7 +1669,6 @@ void ParticleSystemApplication::createDescriptorSets()
         descriptorWrites[5].descriptorCount = 1;
         descriptorWrites[5].pBufferInfo = &storageBufferInfoCurrentFrame;
 
-        std::cout << (descriptorWrites[3].pImageInfo[0].imageView == VK_NULL_HANDLE) << "\n";
         vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
 }
@@ -1764,7 +1689,7 @@ void ParticleSystemApplication::initVulkan()
     createComputeDescriptorSetLayout();
     createDescriptorSetLayout();
     createGraphicsPipeline();
-    createComputePipeline();
+    createParticleInitPipeline();
     createCommandPool();
     createDepthResources();  
 
@@ -1790,6 +1715,8 @@ void ParticleSystemApplication::initVulkan()
 
     createCommandBuffer();
     createSyncObjects();
+
+
 }
 
 void ParticleSystemApplication::updateUniformBuffer(uint32_t currentImage)
@@ -1854,7 +1781,7 @@ VkCommandBuffer ParticleSystemApplication::beginSingleTimeCommands()
     return commandBuffer;
 }
 
-void ParticleSystemApplication::endSingleTimeCommands(VkCommandBuffer commandBuffer)
+void ParticleSystemApplication::endSingleTimeCommands(VkCommandBuffer commandBuffer, VkQueue submitQueue)
 {
     vkEndCommandBuffer(commandBuffer);
 
@@ -1863,8 +1790,8 @@ void ParticleSystemApplication::endSingleTimeCommands(VkCommandBuffer commandBuf
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &commandBuffer;
 
-    vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(graphicsQueue);
+    vkQueueSubmit(submitQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(submitQueue);
 
     vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }
@@ -1938,7 +1865,7 @@ void ParticleSystemApplication::transitionImageLayout(VkImage image, VkFormat fo
         1, &barrier
     );
 
-    endSingleTimeCommands(commandBuffer);
+    endSingleTimeCommands(commandBuffer, graphicsAndComputeQueue);
 }
 
 VkFormat ParticleSystemApplication::findDepthFormat()
@@ -1959,9 +1886,48 @@ void ParticleSystemApplication::createDepthResources()
     transitionImageLayout(depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 }
 
-void initParticleBuffers()
+void ParticleSystemApplication::resetParticle()
 {
-    
+    vkWaitForFences(device, 1, &computeInFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+    vkResetFences(device, 1, &computeInFlightFences[currentFrame]);
+
+    vkResetCommandBuffer(computeCommandBuffer[currentFrame], 0);
+    recordParticleInitCommandBuffer(computeCommandBuffer[currentFrame]);
+
+    VkSubmitInfo submitInfo{};
+
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    // VkSemaphore waitSemaphores[] = {computeFinishedSemaphore[currentFrame]};
+    // VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT};
+    // submitInfo.waitSemaphoreCount = 1;
+    // submitInfo.pWaitSemaphores = waitSemaphores;
+    // submitInfo.pWaitDstStageMask = waitStages;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &computeCommandBuffer[currentFrame];
+    VkSemaphore signalSemaphores[] = {computeFinishedSemaphore[currentFrame]};
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = signalSemaphores;
+
+    if (vkQueueSubmit(graphicsAndComputeQueue, 1, &submitInfo, computeInFlightFences[currentFrame]) != VK_SUCCESS)
+        throw std::runtime_error("Failed to submit draw command buffer.");
+}
+
+void ParticleSystemApplication::recordParticleInitCommandBuffer(VkCommandBuffer commandBuffer)
+{
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = 0;
+    beginInfo.pInheritanceInfo = nullptr;
+
+    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
+        throw std::runtime_error("Failed to begin recording command buffer.");
+
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, particleInitPipeline);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, particleInitPipelineLayout, 0, 1, &computeDescriptorSets[currentFrame], 0, 0);
+    vkCmdDispatch(commandBuffer, PARTICLE_NUMBER / 256, 1, 1);
+
+    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+        throw std::runtime_error("failed to record command buffer!");
 }
 
 
@@ -1993,7 +1959,7 @@ void ParticleSystemApplication::drawFrame()
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence[currentFrame]) != VK_SUCCESS)
+    if (vkQueueSubmit(graphicsAndComputeQueue, 1, &submitInfo, inFlightFence[currentFrame]) != VK_SUCCESS)
         throw std::runtime_error("Failed to submit draw command buffer.");
 
 
@@ -2046,6 +2012,10 @@ void ParticleSystemApplication::cleanup()
     vkDestroyImage(device, textureImage, nullptr);
     vkFreeMemory(device, textureImageMemory, nullptr);
 
+    vkDestroyImageView(device, bumpImageView, nullptr);
+    vkDestroyImage(device, bumpImage, nullptr);
+    vkFreeMemory(device, bumpImageMemory, nullptr);
+
     for (uint i = 0; i < kNumberOfFramesInFlight; i++)
     {
         vkDestroyBuffer(device, shaderStorageBuffers[i], nullptr);
@@ -2059,6 +2029,9 @@ void ParticleSystemApplication::cleanup()
     {
         vkDestroySemaphore(device, imageAvailableSemaphore[i], nullptr);
         vkDestroyFence(device, inFlightFence[i], nullptr);
+
+        vkDestroySemaphore(device, computeFinishedSemaphore[i], nullptr);
+        vkDestroyFence(device, computeInFlightFences[i], nullptr);
     }
     for (uint i = 0; i < swapChainImages.size(); i++)
     {
@@ -2078,11 +2051,11 @@ void ParticleSystemApplication::cleanup()
 
     vkDestroyDescriptorPool(device, descriptorPool, nullptr);
     vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-    vkDestroyDescriptorSetLayout(device, computeDescriptorSetLayout, nullptr);
+    vkDestroyDescriptorSetLayout(device, particleInitDescriptorSetLayout, nullptr);
     vkDestroyPipeline(device, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(device, graphicsPipelineLayout, nullptr);
-    vkDestroyPipeline(device, computePipeline, nullptr);
-    vkDestroyPipelineLayout(device, computePipelineLayout, nullptr);
+    vkDestroyPipeline(device, particleInitPipeline, nullptr);
+    vkDestroyPipelineLayout(device, particleInitPipelineLayout, nullptr);
     // vkDestroyRenderPass(device, renderPass, nullptr);
 
     vkDestroyImageView(device, depthImageView, nullptr);
@@ -2109,6 +2082,7 @@ void ParticleSystemApplication::run()
 {
     initWindow();
     initVulkan();
+    resetParticle();
     mainLoop();
     cleanup();
 }
