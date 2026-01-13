@@ -15,7 +15,7 @@
 #define BASE_WIN_HEIGHT 1080
 #define BASE_WIN_WIDTH 1920
 
-#define PARTICLE_NUMBER 1048576
+#define PARTICLE_NUMBER 4194304
 
 
 struct SceneData
@@ -162,6 +162,8 @@ class ParticleSystemApplication
 
         bool particleNeedReset = true;
 
+        VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
+
         const std::vector<const char*> validationLayers =
         {
             "VK_LAYER_KHRONOS_validation"
@@ -280,6 +282,7 @@ class ParticleSystemApplication
 
         VkShaderModule createShaderModule(const std::vector<char>& code);
 
+        VkSampleCountFlagBits getMaxUsableSampleCount();
 
         void initVulkan();
         void mainLoop();

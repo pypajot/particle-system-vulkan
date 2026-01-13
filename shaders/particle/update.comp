@@ -2,8 +2,8 @@
 
 struct Particle
 {
-    vec3 position;
-    vec3 velocity;
+    vec4 position;
+    vec4 velocity;
     vec4 color;
 };
 

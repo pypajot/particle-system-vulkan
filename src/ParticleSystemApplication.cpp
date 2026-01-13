@@ -671,6 +671,22 @@ void ParticleSystemApplication::createBumpImageView()
     bumpImageView = createImageView(bumpImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
+VkSampleCountFlagBits ParticleSystemApplication::getMaxUsableSampleCount()
+{
+    VkPhysicalDeviceProperties physicalDeviceProperties;
+    vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
+
+    VkSampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts & physicalDeviceProperties.limits.framebufferDepthSampleCounts;
+    if (counts & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
+    if (counts & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
+    if (counts & VK_SAMPLE_COUNT_16_BIT) { return VK_SAMPLE_COUNT_16_BIT; }
+    if (counts & VK_SAMPLE_COUNT_8_BIT) { return VK_SAMPLE_COUNT_8_BIT; }
+    if (counts & VK_SAMPLE_COUNT_4_BIT) { return VK_SAMPLE_COUNT_4_BIT; }
+    if (counts & VK_SAMPLE_COUNT_2_BIT) { return VK_SAMPLE_COUNT_2_BIT; }
+
+    return VK_SAMPLE_COUNT_1_BIT;
+}
+
 int ParticleSystemApplication::rateDeviceSuitability(VkPhysicalDevice device)
 {
     VkPhysicalDeviceProperties deviceProperties;
@@ -734,7 +750,10 @@ void ParticleSystemApplication::pickPhysicalDevice()
     }
 
     if (candidates.rbegin()->first > 0)
+    {
         physicalDevice = candidates.rbegin()->second;
+        msaaSamples = getMaxUsableSampleCount();
+    }
     else
         throw std::runtime_error("Failed to find a suitable GPU.");
     
@@ -1626,7 +1645,7 @@ void ParticleSystemApplication::createStorageBuffers()
 
     for (uint32_t i = 0; i < kNumberOfFramesInFlight; i++)
         createBuffer(bufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, shaderStorageBuffers[i], shaderStorageBuffersMemory[i]);
-
+    
 }
 
 
@@ -1969,6 +1988,7 @@ void ParticleSystemApplication::updateUniformBuffer(uint32_t currentImage)
     float time = glfwGetTime() / 4;
     UniformBufferObject ubo{};
     ubo.model = glm::rotate(glm::mat4(1.0f), time, glm::vec3(0, 1, 0));
+    ubo.model = glm::mat4(1.0f);
     ubo.view = glm::lookAt(glm::vec3(0.0f, -10.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 100.0f);
     ubo.proj[1][1] *= -1;
@@ -2323,6 +2343,8 @@ void ParticleSystemApplication::cleanup()
     vkDestroyDescriptorSetLayout(device, particleInitDescriptorSetLayout, nullptr);
     vkDestroyPipeline(device, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(device, graphicsPipelineLayout, nullptr);
+    vkDestroyPipeline(device, particleGraphicsPipeline, nullptr);
+    vkDestroyPipelineLayout(device, particleGraphicsPipelineLayout, nullptr);
     vkDestroyPipeline(device, particleInitPipeline, nullptr);
     vkDestroyPipelineLayout(device, particleInitPipelineLayout, nullptr);
     vkDestroyPipeline(device, particleUpdatePipeline, nullptr);
