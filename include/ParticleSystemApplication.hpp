@@ -140,6 +140,10 @@ class ParticleSystemApplication
         std::vector<VkDescriptorSet> descriptorSets;
         std::vector<VkDescriptorSet> computeDescriptorSets;
 
+        VkImage colorImage;
+        VkDeviceMemory colorImageMemory;
+        VkImageView colorImageView;
+
         VkImage depthImage;
         VkDeviceMemory depthImageMemory;
         VkImageView depthImageView;
@@ -248,6 +252,7 @@ class ParticleSystemApplication
         void createComputeDescriptorSetLayout();
         void updateUniformBuffer(uint32_t currentImage);
 
+        void createColorResources();
         void createDepthResources();
         VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
         VkFormat findDepthFormat();
@@ -255,7 +260,7 @@ class ParticleSystemApplication
 
         uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
-        void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+        void createImage(uint32_t width, uint32_t height, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
         VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 
         void createTextureSampler();
