@@ -1449,7 +1449,7 @@ void ParticleSystemApplication::recordCommandBuffer(VkCommandBuffer commandBuffe
     colorAttachmentInfo.imageView = colorImageView;
     colorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     colorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     colorAttachmentInfo.clearValue = clearValues[0];
 
     colorAttachmentInfo.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
@@ -2008,7 +2008,7 @@ void ParticleSystemApplication::updateUniformBuffer(uint32_t currentImage)
     UniformBufferObject ubo{};
     ubo.model = glm::rotate(glm::mat4(1.0f), time, glm::vec3(0, 1, 0));
     ubo.model = glm::mat4(1.0f);
-    ubo.view = glm::lookAt(glm::vec3(0.0f, -10.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.view = glm::lookAt(glm::vec3(-7.0f, -7.0f, -7.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 100.0f);
     ubo.proj[1][1] *= -1;
     
@@ -2019,7 +2019,7 @@ void ParticleSystemApplication::updateUniformBuffer(uint32_t currentImage)
     SceneData scene{};
     scene.ambientLight = glm::vec4(0.1f);
     scene.sunlightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    scene.sunlightDirection = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+    scene.sunlightDirection = glm::vec4(1.0f, -1.0f, 0.0f, 1.0f);
 
     memcpy(sceneDataBuffersMapped[currentImage], &scene, sizeof(scene));
 }
