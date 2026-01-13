@@ -17,5 +17,5 @@ void main()
 {
     outColor = inColor;
     gl_Position = ubo.projViewModel * vec4(inPosition.xyz, 1.0);
-    gl_PointSize = 2.0f;
+    gl_PointSize = 1.0f;
 }
