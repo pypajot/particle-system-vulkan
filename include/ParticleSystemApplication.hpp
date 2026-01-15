@@ -15,7 +15,7 @@
 #define BASE_WIN_HEIGHT 1080
 #define BASE_WIN_WIDTH 1920
 
-#define PARTICLE_NUMBER 4194304
+#define PARTICLE_NUMBER 16777216
 
 
 struct SceneData
@@ -152,6 +152,10 @@ class ParticleSystemApplication
         VkDeviceMemory textureImageMemory;
         VkImageView textureImageView;
 
+        VkImage depthMap;
+        VkDeviceMemory depthMapMemory;
+        VkImageView depthMapView;
+
         VkSampler textureSampler;
 
         VkImage bumpImage;
@@ -270,6 +274,8 @@ class ParticleSystemApplication
         
         void createBumpImage();
         void createBumpImageView();
+
+        void createDepthMap();
         
         void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 

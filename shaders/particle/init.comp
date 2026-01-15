@@ -6,7 +6,7 @@ struct Particle
 {
     vec4 position;
     vec4 velocity;
-    vec4 color;
+    // vec4 color;
 };
 
 layout (std140, binding = 2) buffer ParticleSSBOOut
@@ -14,31 +14,31 @@ layout (std140, binding = 2) buffer ParticleSSBOOut
     Particle particlesOut[];
 };
 
-layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 void main()
 {
     uint index = gl_GlobalInvocationID.x;
 
-    float angle = (gl_GlobalInvocationID.x / 2048) / 2048.0f;
-    float dist = (gl_GlobalInvocationID.x % 2048) / 2048.0f;
+    float angle = (gl_GlobalInvocationID.x / 4096) / 4096.0f;
+    float dist = (gl_GlobalInvocationID.x % 4096) / 4096.0f;
 
     angle *= 2 * PI;
 
-    float intensity = fract(sin(dot(vec2(dist / 250, dist / 250),vec2(12.98,78)))*43758.54);
+    float intensity = fract(sin(dist * dist * 10000));
     if (intensity > 0.2f && intensity < 0.5f)
         intensity = 0.2f;
     if (intensity < 0.8f && intensity >= 0.5f)
-        intensity = 0.8f;
+        intensity = 0.8f; 
 
     dist = dist * 2.5f + 2.5f;
 
-    particlesOut[index].position = vec4(dist * cos(angle), 0, dist * sin(angle), 1.0f);
+    particlesOut[index].position.xyz = vec3(dist * cos(angle), 0, dist * sin(angle));
     float speed = 1 / sqrt(dist);
-    particlesOut[index].velocity = vec4(speed * sin(angle), 0.0f, speed * -cos(angle), 0.0f);
-    particlesOut[index].color = vec4(intensity * vec3(1.0f, 1.0f, 0.7f), 1.0f);
+    particlesOut[index].velocity.xyz = vec3(speed * sin(angle), 0.0f, speed * -cos(angle));
+    // particlesOut[index].color = vec4(intensity * vec3(1.0f, 1.0f, 0.7f), 1.0f);
 
-    // particlesOut[index].position = vec3(1.0f, 1.0f, 1.0f);
-    // particlesOut[index].velocity = vec3(0.0f, 0.0f, 0.0f);
+    // particlesOut[index].position.xyz = vec3(1.0f, 1.0f, 1.0f);
+    // particlesOut[index].velocity.xyz = vec3(0.0f, 0.0f, 0.0f);
     // particlesOut[index].color = vec4(vec3(1.0f, 1.0f, 1.0f), 1.0f);
 }
