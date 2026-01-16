@@ -20,7 +20,7 @@ void main()
     // vec3 bump = texture(texBumpSampler, fragTexCoord).rgb;
     // vec3 bumpNorm = fragNormal + bump.xyz;
     // bumpNorm = normalize(bumpNorm);
-    float lightIntensity = dot(scene.sunlightDirection.xyz, fragNormal);
+    float lightIntensity = dot(normalize(scene.sunlightDirection).xyz, fragNormal);
     if (lightIntensity < 0.0f)
         lightIntensity = 0.0f;
     lightIntensity += scene.ambientLight.x;

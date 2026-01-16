@@ -85,8 +85,16 @@ class ParticleSystemApplication
         std::vector<VkImageView> swapChainImageViews;
 
         // VkRenderPass renderPass;
+        VkDescriptorSetLayout shadowMapDescriptorSetLayout;
+        
+        VkPipelineLayout shadowMapModelPipelineLayout;
+        VkPipeline shadowMapModelPipeline;
+        
+        VkPipelineLayout shadowMapParticlePipelineLayout;
+        VkPipeline shadowMapParticlePipeline;
+        
         VkDescriptorSetLayout descriptorSetLayout;
-
+        
         VkPipelineLayout graphicsPipelineLayout;
         VkPipeline graphicsPipeline;
 
@@ -135,10 +143,14 @@ class ParticleSystemApplication
         std::vector<VkDeviceMemory> sceneDataBuffersMemory;
         std::vector<void*> sceneDataBuffersMapped;
 
+        std::vector<VkBuffer> shadowMapUniformBuffers;
+        std::vector<VkDeviceMemory> shadowMapUniformBuffersMemory;
+        std::vector<void*> shadowMapUniformBuffersMapped;
 
         VkDescriptorPool descriptorPool;
         std::vector<VkDescriptorSet> descriptorSets;
         std::vector<VkDescriptorSet> computeDescriptorSets;
+        std::vector<VkDescriptorSet> shadowMapDescriptorSets;
 
         VkImage colorImage;
         VkDeviceMemory colorImageMemory;
@@ -157,13 +169,13 @@ class ParticleSystemApplication
         VkImageView depthMapView;
 
         VkSampler textureSampler;
+        VkSampler shadowMapTextureSampler;
 
         VkImage bumpImage;
         VkDeviceMemory bumpImageMemory;
         VkImageView bumpImageView;
 
         uint32_t currentFrame = 0;
-        glm::mat4 proj;
 
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
@@ -199,7 +211,6 @@ class ParticleSystemApplication
         std::vector<const char*> getRequiredExtensions();
         bool checkDeviceExtensionSupport(VkPhysicalDevice device);
         int rateDeviceSuitability(VkPhysicalDevice device);
-        bool isDeviceSuitable(VkPhysicalDevice device);
 
         void initWindow();
 
@@ -231,6 +242,10 @@ class ParticleSystemApplication
         void createSwapChain();
         void createImageViews();
         // void createRenderPass();
+
+        void createShadowMapModelPipeline();
+        void createShadowMapParticlePipeline();
+
         void createGraphicsPipeline();
         void createParticleGraphicsPipeline();
         void createParticleInitPipeline();
@@ -249,11 +264,13 @@ class ParticleSystemApplication
         void createStorageBuffers();
         void createUniformBuffers();
         void createSceneDataBuffers();
+        void createShadowMapUniformBuffers();
 
         void createDescriptorPool();
         void createDescriptorSets();
         void createDescriptorSetLayout();
         void createComputeDescriptorSetLayout();
+        void createShadowMapDescriptorSetLayout();
         void updateUniformBuffer(uint32_t currentImage);
 
         void createColorResources();
@@ -268,6 +285,7 @@ class ParticleSystemApplication
         VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 
         void createTextureSampler();
+        void createShadowMapTextureSampler();
 
         void createTextureImage();
         void createTextureImageView();
