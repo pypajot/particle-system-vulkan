@@ -928,14 +928,14 @@ void ParticleSystemApplication::createShadowMapModelPipeline()
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = (float)swapChainExtent.width;
-    viewport.height = (float)swapChainExtent.height;
+    viewport.width = (float)shadowMapWidth;
+    viewport.height = (float)shadowMapHeight;
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
     VkRect2D scissor{};
     scissor.offset = {0, 0};
-    scissor.extent = swapChainExtent;
+    scissor.extent = {shadowMapWidth, shadowMapHeight};
 
     // Uncomment for resize window
     std::vector<VkDynamicState> dynamicStates = {
@@ -1030,7 +1030,7 @@ void ParticleSystemApplication::createShadowMapModelPipeline()
     VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo{};
     
     pipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-    pipelineRenderingCreateInfo.colorAttachmentCount = 1;
+    pipelineRenderingCreateInfo.colorAttachmentCount = 0;
     pipelineRenderingCreateInfo.pColorAttachmentFormats = &swapChainImageFormat;
     pipelineRenderingCreateInfo.depthAttachmentFormat = findDepthFormat();
 
@@ -1117,14 +1117,14 @@ void ParticleSystemApplication::createShadowMapParticlePipeline()
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = (float)swapChainExtent.width;
-    viewport.height = (float)swapChainExtent.height;
+    viewport.width = (float)shadowMapWidth;
+    viewport.height = (float)shadowMapHeight;
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
     VkRect2D scissor{};
     scissor.offset = {0, 0};
-    scissor.extent = swapChainExtent;
+    scissor.extent = {shadowMapWidth, shadowMapHeight};
 
     // Uncomment for resize window
     std::vector<VkDynamicState> dynamicStates = {
@@ -1163,7 +1163,7 @@ void ParticleSystemApplication::createShadowMapParticlePipeline()
     VkPipelineMultisampleStateCreateInfo multisampling{};
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampling.sampleShadingEnable = VK_FALSE;
-    multisampling.rasterizationSamples = msaaSamples;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
     multisampling.minSampleShading = 1.0f;
     multisampling.pSampleMask = nullptr;
     multisampling.alphaToCoverageEnable = VK_FALSE;
@@ -1209,7 +1209,7 @@ void ParticleSystemApplication::createShadowMapParticlePipeline()
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+    pipelineLayoutInfo.pSetLayouts = &shadowMapDescriptorSetLayout;
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
@@ -1219,7 +1219,7 @@ void ParticleSystemApplication::createShadowMapParticlePipeline()
     VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo {};
     
     pipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-    pipelineRenderingCreateInfo.colorAttachmentCount = 1;
+    pipelineRenderingCreateInfo.colorAttachmentCount = 0;
     pipelineRenderingCreateInfo.pColorAttachmentFormats = &swapChainImageFormat;
     pipelineRenderingCreateInfo.depthAttachmentFormat = findDepthFormat();
 
@@ -1775,6 +1775,72 @@ void ParticleSystemApplication::transition_image_layout
 
 }
 
+void ParticleSystemApplication::recordShadowMapRendering(VkCommandBuffer commandBuffer)
+{
+    VkClearValue clearValue{};
+    clearValue.depthStencil = {1.0f, 0};
+
+    VkRenderingAttachmentInfo shadowPassDepthAttachmentInfo{};
+    shadowPassDepthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    shadowPassDepthAttachmentInfo.imageView = depthMapView;
+    shadowPassDepthAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    shadowPassDepthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    shadowPassDepthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    shadowPassDepthAttachmentInfo.clearValue = clearValue;
+
+    VkRenderingInfo shadowPassRenderingInfo{};
+    shadowPassRenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+    shadowPassRenderingInfo.renderArea = { .offset = { 0, 0 }, .extent = {shadowMapWidth, shadowMapHeight} };
+    shadowPassRenderingInfo.layerCount = 1;
+    shadowPassRenderingInfo.colorAttachmentCount = 0;
+    shadowPassRenderingInfo.pColorAttachments = nullptr;
+    shadowPassRenderingInfo.pDepthAttachment = &shadowPassDepthAttachmentInfo;
+
+    vkCmdBeginRendering(commandBuffer, &shadowPassRenderingInfo);
+
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowMapModelPipeline);
+
+    
+
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(shadowMapWidth);
+    viewport.height = static_cast<float>(shadowMapHeight);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+    VkRect2D scissor{};
+    scissor.offset = {0, 0};
+    scissor.extent = {shadowMapWidth, shadowMapHeight};
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+    VkBuffer vertexBuffers[] = {vertexBuffer};
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowMapModelPipelineLayout, 0, 1, &shadowMapDescriptorSets[currentFrame], 0, nullptr);
+    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowMapParticlePipeline);
+
+    
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+    
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+    vertexBuffers[0] = shaderStorageBuffers[currentFrame];
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowMapParticlePipelineLayout, 0, 1, &shadowMapDescriptorSets[currentFrame], 0, nullptr);
+    vkCmdDraw(commandBuffer, PARTICLE_NUMBER, 1, 0, 0);
+    vkCmdEndRendering(commandBuffer);
+    // vkCmdEndRenderPass(commandBuffer);
+}
+
 void ParticleSystemApplication::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
     VkCommandBufferBeginInfo beginInfo{};
@@ -1785,7 +1851,37 @@ void ParticleSystemApplication::recordCommandBuffer(VkCommandBuffer commandBuffe
     if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
         throw std::runtime_error("Failed to begin recording command buffer.");
 
+    std::array<VkClearValue, 2> clearValues{};
+    clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+    clearValues[1].depthStencil = {1.0f, 0};
 
+    transition_image_layout
+    (
+        commandBuffer,
+        depthMap,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+        VK_IMAGE_ASPECT_DEPTH_BIT
+    );
+
+    recordShadowMapRendering(commandBuffer);
+
+    transition_image_layout
+    (
+        commandBuffer,
+        depthMap,
+        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
+        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+        VK_IMAGE_ASPECT_DEPTH_BIT
+    );
 
     transition_image_layout
     (
@@ -1851,9 +1947,6 @@ void ParticleSystemApplication::recordCommandBuffer(VkCommandBuffer commandBuffe
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_IMAGE_ASPECT_COLOR_BIT
     );
-    std::array<VkClearValue, 2> clearValues{};
-    clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
-    clearValues[1].depthStencil = {1.0f, 0};
 
     VkRenderingAttachmentInfo colorAttachmentInfo{};
     colorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -2115,7 +2208,7 @@ void ParticleSystemApplication::createIndexBuffer()
 
 void ParticleSystemApplication::createDescriptorSetLayout()
 {
-    std::array<VkDescriptorSetLayoutBinding, 5> bindings;
+    std::array<VkDescriptorSetLayoutBinding, 6> bindings;
 
     // VkDescriptorSetLayoutBinding uboLayoutBinding{};
     bindings[0].binding = 0;
@@ -2129,15 +2222,15 @@ void ParticleSystemApplication::createDescriptorSetLayout()
     bindings[1].descriptorCount = 1;
     bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     bindings[1].pImmutableSamplers = nullptr;
-    bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-    // VkDescriptorSetLayoutBinding samplerLayoutBinding{};
     bindings[2].binding = 2;
     bindings[2].descriptorCount = 1;
-    bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     bindings[2].pImmutableSamplers = nullptr;
     bindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
+    // VkDescriptorSetLayoutBinding samplerLayoutBinding{};
     bindings[3].binding = 3;
     bindings[3].descriptorCount = 1;
     bindings[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -2149,6 +2242,12 @@ void ParticleSystemApplication::createDescriptorSetLayout()
     bindings[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     bindings[4].pImmutableSamplers = nullptr;
     bindings[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    bindings[5].binding = 5;
+    bindings[5].descriptorCount = 1;
+    bindings[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[5].pImmutableSamplers = nullptr;
+    bindings[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
     // bindings[0] = uboLayoutBinding;
     // bindings[1] = sceneDataLayoutBinding;
@@ -2328,7 +2427,7 @@ void ParticleSystemApplication::createDescriptorSets()
 
     for (size_t i = 0; i < kNumberOfFramesInFlight; i++)
     {
-        std::array<VkWriteDescriptorSet, 8> descriptorWrites{};
+        std::array<VkWriteDescriptorSet, 9> descriptorWrites{};
 
         VkDescriptorBufferInfo uniformBufferInfo{};
         uniformBufferInfo.buffer = uniformBuffers[i];
@@ -2345,10 +2444,10 @@ void ParticleSystemApplication::createDescriptorSets()
         descriptorWrites[0].pImageInfo = nullptr;
         descriptorWrites[0].pTexelBufferView = nullptr;
 
-        VkDescriptorBufferInfo sceneDataBufferInfo{};
-        sceneDataBufferInfo.buffer = sceneDataBuffers[i];
-        sceneDataBufferInfo.offset = 0;
-        sceneDataBufferInfo.range = sizeof(SceneData);
+        VkDescriptorBufferInfo shadowMapBufferInfo{};
+        shadowMapBufferInfo.buffer = shadowMapUniformBuffers[i];
+        shadowMapBufferInfo.offset = 0;
+        shadowMapBufferInfo.range = sizeof(UniformBufferObject);
 
         descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[1].dstSet = descriptorSets[i];
@@ -2356,27 +2455,29 @@ void ParticleSystemApplication::createDescriptorSets()
         descriptorWrites[1].dstArrayElement = 0;
         descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptorWrites[1].descriptorCount = 1;
-        descriptorWrites[1].pBufferInfo = &sceneDataBufferInfo;
+        descriptorWrites[1].pBufferInfo = &shadowMapBufferInfo;
         descriptorWrites[1].pImageInfo = nullptr;
         descriptorWrites[1].pTexelBufferView = nullptr;
 
-        VkDescriptorImageInfo imageInfo{};
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageInfo.imageView = textureImageView;
-        imageInfo.sampler = textureSampler;
+        VkDescriptorBufferInfo sceneDataBufferInfo{};
+        sceneDataBufferInfo.buffer = sceneDataBuffers[i];
+        sceneDataBufferInfo.offset = 0;
+        sceneDataBufferInfo.range = sizeof(SceneData);
 
         descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[2].dstSet = descriptorSets[i];
         descriptorWrites[2].dstBinding = 2;
         descriptorWrites[2].dstArrayElement = 0;
-        descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptorWrites[2].descriptorCount = 1;
-        descriptorWrites[2].pImageInfo = &imageInfo;
+        descriptorWrites[2].pBufferInfo = &sceneDataBufferInfo;
+        descriptorWrites[2].pImageInfo = nullptr;
+        descriptorWrites[2].pTexelBufferView = nullptr;
 
-        VkDescriptorImageInfo bumpImageInfo{};
-        bumpImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        bumpImageInfo.imageView = bumpImageView;
-        bumpImageInfo.sampler = textureSampler;
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageView = textureImageView;
+        imageInfo.sampler = textureSampler;
 
         descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[3].dstSet = descriptorSets[i];
@@ -2384,12 +2485,12 @@ void ParticleSystemApplication::createDescriptorSets()
         descriptorWrites[3].dstArrayElement = 0;
         descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         descriptorWrites[3].descriptorCount = 1;
-        descriptorWrites[3].pImageInfo = &bumpImageInfo;
+        descriptorWrites[3].pImageInfo = &imageInfo;
 
-        VkDescriptorImageInfo shadowMapTextureImageInfo{};
-        shadowMapTextureImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        shadowMapTextureImageInfo.imageView = depthMapView;
-        shadowMapTextureImageInfo.sampler = shadowMapTextureSampler;
+        VkDescriptorImageInfo bumpImageInfo{};
+        bumpImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        bumpImageInfo.imageView = bumpImageView;
+        bumpImageInfo.sampler = textureSampler;
 
         descriptorWrites[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[4].dstSet = descriptorSets[i];
@@ -2397,48 +2498,56 @@ void ParticleSystemApplication::createDescriptorSets()
         descriptorWrites[4].dstArrayElement = 0;
         descriptorWrites[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         descriptorWrites[4].descriptorCount = 1;
-        descriptorWrites[4].pImageInfo = &shadowMapTextureImageInfo;
+        descriptorWrites[4].pImageInfo = &bumpImageInfo;
+
+        VkDescriptorImageInfo shadowMapTextureImageInfo{};
+        shadowMapTextureImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        shadowMapTextureImageInfo.imageView = depthMapView;
+        shadowMapTextureImageInfo.sampler = shadowMapTextureSampler;
+
+        descriptorWrites[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[5].dstSet = descriptorSets[i];
+        descriptorWrites[5].dstBinding = 5;
+        descriptorWrites[5].dstArrayElement = 0;
+        descriptorWrites[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[5].descriptorCount = 1;
+        descriptorWrites[5].pImageInfo = &shadowMapTextureImageInfo;
         
         VkDescriptorBufferInfo storageBufferInfoLastFrame{};
         storageBufferInfoLastFrame.buffer = shaderStorageBuffers[(i - 1) % kNumberOfFramesInFlight];
         storageBufferInfoLastFrame.offset = 0;
         storageBufferInfoLastFrame.range = sizeof(Particle) * PARTICLE_NUMBER;
 
-        descriptorWrites[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[5].dstSet = computeDescriptorSets[i];
-        descriptorWrites[5].dstBinding = 1;
-        descriptorWrites[5].dstArrayElement = 0;
-        descriptorWrites[5].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptorWrites[5].descriptorCount = 1;
-        descriptorWrites[5].pBufferInfo = &storageBufferInfoLastFrame;
+        descriptorWrites[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[6].dstSet = computeDescriptorSets[i];
+        descriptorWrites[6].dstBinding = 1;
+        descriptorWrites[6].dstArrayElement = 0;
+        descriptorWrites[6].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrites[6].descriptorCount = 1;
+        descriptorWrites[6].pBufferInfo = &storageBufferInfoLastFrame;
 
         VkDescriptorBufferInfo storageBufferInfoCurrentFrame{};
         storageBufferInfoCurrentFrame.buffer = shaderStorageBuffers[i];
         storageBufferInfoCurrentFrame.offset = 0;
         storageBufferInfoCurrentFrame.range = sizeof(Particle) * PARTICLE_NUMBER;
 
-        descriptorWrites[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[6].dstSet = computeDescriptorSets[i];
-        descriptorWrites[6].dstBinding = 2;
-        descriptorWrites[6].dstArrayElement = 0;
-        descriptorWrites[6].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptorWrites[6].descriptorCount = 1;
-        descriptorWrites[6].pBufferInfo = &storageBufferInfoCurrentFrame;
-
-        VkDescriptorBufferInfo shadowMapBufferInfo{};
-        shadowMapBufferInfo.buffer = shadowMapUniformBuffers[i];
-        shadowMapBufferInfo.offset = 0;
-        shadowMapBufferInfo.range = sizeof(UniformBufferObject);
-
         descriptorWrites[7].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[7].dstSet = shadowMapDescriptorSets[i];
-        descriptorWrites[7].dstBinding = 0;
+        descriptorWrites[7].dstSet = computeDescriptorSets[i];
+        descriptorWrites[7].dstBinding = 2;
         descriptorWrites[7].dstArrayElement = 0;
-        descriptorWrites[7].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[7].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         descriptorWrites[7].descriptorCount = 1;
-        descriptorWrites[7].pBufferInfo = &shadowMapBufferInfo;
-        descriptorWrites[7].pImageInfo = nullptr;
-        descriptorWrites[7].pTexelBufferView = nullptr;
+        descriptorWrites[7].pBufferInfo = &storageBufferInfoCurrentFrame;
+
+        descriptorWrites[8].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[8].dstSet = shadowMapDescriptorSets[i];
+        descriptorWrites[8].dstBinding = 0;
+        descriptorWrites[8].dstArrayElement = 0;
+        descriptorWrites[8].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[8].descriptorCount = 1;
+        descriptorWrites[8].pBufferInfo = &shadowMapBufferInfo;
+        descriptorWrites[8].pImageInfo = nullptr;
+        descriptorWrites[8].pTexelBufferView = nullptr;
 
         vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
@@ -2497,8 +2606,6 @@ void ParticleSystemApplication::initVulkan()
 
     createCommandBuffer();
     createSyncObjects();
-
-
 }
 
 void ParticleSystemApplication::updateUniformBuffer(uint32_t currentImage)
@@ -2507,25 +2614,27 @@ void ParticleSystemApplication::updateUniformBuffer(uint32_t currentImage)
     UniformBufferObject ubo{};
     ubo.model = glm::rotate(glm::mat4(1.0f), time, glm::vec3(0, 1, 0));
     ubo.model = glm::mat4(1.0f);
-    ubo.view = glm::lookAt(glm::vec3(0.0f, -10.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f));
+    ubo.view = glm::lookAt(glm::vec3(5.0f, -10.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f));
     ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 100.0f);
+    // ubo.view = glm::lookAt(glm::vec3(10.0f, -2.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+    // ubo.proj = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, -20.0f, 20.0f);
     ubo.proj[1][1] *= -1;
-    
     ubo.projViewModel = ubo.proj * ubo.view * ubo.model;
+
 
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 
     SceneData scene{};
     scene.ambientLight = glm::vec4(0.1f);
     scene.sunlightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    scene.sunlightDirection = glm::vec4(10.0f, -1.0f, 0.0f, 1.0f);
+    scene.sunlightDirection = glm::vec4(10.0f, 2.0f, 0.0f, 1.0f);
 
     memcpy(sceneDataBuffersMapped[currentImage], &scene, sizeof(scene));
 
     ubo.model = glm::mat4(1.0f);
-    ubo.view = glm::lookAt(glm::vec3(-50.0f, 5.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    ubo.proj = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.1f, 100.0f);
-    ubo.proj[1][1] *= -1;
+    ubo.view = glm::lookAt(glm::vec3(10.0f, 2.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+    ubo.proj = glm::ortho(-10.0f, 10.0f, 10.0f, -10.0f, -20.0f, 20.0f);
+    // ubo.proj[1][1] *= -1;
     
     ubo.projViewModel = ubo.proj * ubo.view * ubo.model;
 
@@ -2693,8 +2802,8 @@ void ParticleSystemApplication::createDepthMap()
     VkFormat depthFormat = findDepthFormat();
     createImage
     (
-        swapChainExtent.width,
-        swapChainExtent.height,
+        shadowMapWidth,
+        shadowMapHeight,
         VK_SAMPLE_COUNT_1_BIT,
         depthFormat,
         VK_IMAGE_TILING_OPTIMAL,

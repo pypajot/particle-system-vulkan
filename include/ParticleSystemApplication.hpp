@@ -164,6 +164,9 @@ class ParticleSystemApplication
         VkDeviceMemory textureImageMemory;
         VkImageView textureImageView;
 
+        uint shadowMapHeight = 1024;
+        uint shadowMapWidth = 1024;
+
         VkImage depthMap;
         VkDeviceMemory depthMapMemory;
         VkImageView depthMapView;
@@ -253,6 +256,8 @@ class ParticleSystemApplication
         // void createFramebuffers();
         void createCommandPool();
         void createCommandBuffer();
+
+        void recordShadowMapRendering(VkCommandBuffer commandBuffer);
         void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
         void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
