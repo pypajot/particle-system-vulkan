@@ -7,6 +7,8 @@
 #include <iostream>
 #include <vector>
 #include <optional>
+
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
 #include "Vertex.hpp"
@@ -64,7 +66,7 @@ class ParticleSystemApplication
     private:
         const std::string MODEL_PATH = "models/moon.obj";
         const std::string TEXTURE_PATH = "textures/moon_diffuse.png";
-        const std::string BUMP_PATH = "textures/moon_bump.png";
+        const std::string BUMP_PATH = "textures/saturn_ring_texture.png";
 
         const uint kNumberOfFramesInFlight = 2;
 
@@ -259,13 +261,13 @@ class ParticleSystemApplication
 
         void recordShadowMapRendering(VkCommandBuffer commandBuffer);
         void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-        void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+        void copyBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
         void loadModel();
 
         void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
-        void createVertexBuffer();
-        void createIndexBuffer();
+        void createVertexBuffer(VkCommandBuffer commandBuffer);
+        void createIndexBuffer(VkCommandBuffer commandBuffer);
         void createStorageBuffers();
         void createUniformBuffers();
         void createSceneDataBuffers();
@@ -292,15 +294,15 @@ class ParticleSystemApplication
         void createTextureSampler();
         void createShadowMapTextureSampler();
 
-        void createTextureImage();
+        void createTextureImage(VkCommandBuffer commandBuffer);
         void createTextureImageView();
         
-        void createBumpImage();
+        void createBumpImage(VkCommandBuffer commandBuffer);
         void createBumpImageView();
 
         void createDepthMap();
         
-        void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+        void copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
         void recordComputeCommandBuffer(VkCommandBuffer commandBuffer, VkPipeline computePipeline, VkPipelineLayout computePipelineLayout);
 

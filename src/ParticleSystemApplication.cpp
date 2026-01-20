@@ -28,6 +28,70 @@ void testFun()
     std::cout << "test\n";
 }
 
+static const std::unordered_map<VkResult, std::string> VulkanErrorToString
+{
+    {VK_SUCCESS, "Command successfully completed"},
+    {VK_NOT_READY, "A fence or query has not yet completed"},
+    {VK_TIMEOUT, "A wait operation has not completed in the specified time"},
+    {VK_EVENT_SET, "An event is signaled"},
+    {VK_EVENT_RESET, "An event is unsignaled"},
+    {VK_INCOMPLETE, "A return array was too small for the result"},
+    {VK_SUBOPTIMAL_KHR, "A swapchain no longer matches the surface properties exactly, but can still be used to present to the surface successfully"},
+    {VK_THREAD_IDLE_KHR, "A deferred operation is not complete but there is currently no work for this thread to do at the time of this call"},
+    {VK_THREAD_DONE_KHR, "A deferred operation is not complete but there is no work remaining to assign to additional threads"},
+    {VK_OPERATION_DEFERRED_KHR, "A deferred operation was requested and at least some of the work was deferred"},
+    {VK_OPERATION_NOT_DEFERRED_KHR, "A deferred operation was requested and no operations were deferred"},
+    {VK_PIPELINE_COMPILE_REQUIRED, "A requested pipeline creation would have required compilation, but the application requested compilation to not be performed"},
+    // {VK_PIPELINE_BINARY_MISSING_KHR, "The application attempted to create a pipeline binary by querying an internal cache, but the internal cache entry did not exist"},
+    // {VK_INCOMPATIBLE_SHADER_BINARY_EXT, "The provided binary shader code is not compatible with this device"},
+    {VK_ERROR_OUT_OF_HOST_MEMORY, "A host memory allocation has failed"},
+    {VK_ERROR_OUT_OF_DEVICE_MEMORY, "A device memory allocation has failed"},
+    {VK_ERROR_INITIALIZATION_FAILED, "Initialization of an object could not be completed for implementation-specific reasons"},
+    {VK_ERROR_DEVICE_LOST, "The logical or physical device has been lost"},
+    {VK_ERROR_MEMORY_MAP_FAILED, "Mapping of a memory object has failed"},
+    {VK_ERROR_LAYER_NOT_PRESENT, "A requested layer is not present or could not be loaded"},
+    {VK_ERROR_EXTENSION_NOT_PRESENT, "A requested extension is not supported"},
+    {VK_ERROR_FEATURE_NOT_PRESENT, "A requested feature is not supported"},
+    {VK_ERROR_INCOMPATIBLE_DRIVER, "The requested version of Vulkan is not supported by the driver or is otherwise incompatible for implementation-specific reasons"},
+    {VK_ERROR_TOO_MANY_OBJECTS, "Too many objects of the type have already been created"},
+    {VK_ERROR_FORMAT_NOT_SUPPORTED, "A requested format is not supported on this device"},
+    {VK_ERROR_FRAGMENTED_POOL, "A pool allocation has failed due to fragmentation of the pool’s memory"},
+    {VK_ERROR_SURFACE_LOST_KHR, "A surface is no longer available"},
+    {VK_ERROR_NATIVE_WINDOW_IN_USE_KHR, "The requested window is already in use by Vulkan or another API in a manner which prevents it from being used again"},
+    {VK_ERROR_OUT_OF_DATE_KHR, "A surface has changed in such a way that it is no longer compatible with the swapchain, and further presentation requests using the swapchain will fail"},
+    {VK_ERROR_INCOMPATIBLE_DISPLAY_KHR, "The display used by a swapchain does not use the same presentable image layout, or is incompatible in a way that prevents sharing an image"},
+    {VK_ERROR_INVALID_SHADER_NV, "One or more shaders failed to compile or link"},
+    {VK_ERROR_OUT_OF_POOL_MEMORY, "A pool memory allocation has failed"},
+    {VK_ERROR_INVALID_EXTERNAL_HANDLE, "An external handle is not a valid handle of the specified type"},
+    {VK_ERROR_FRAGMENTATION, "A descriptor pool creation has failed due to fragmentation"},
+    {VK_ERROR_INVALID_DEVICE_ADDRESS_EXT, "A buffer creation failed because the requested address is not available"},
+    {VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS, "A buffer creation or memory allocation failed because the requested address is not available A shader group handle assignment failed because the requested shader group handle information is no longer valid"},
+    {VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT, "An operation on a swapchain created with VK_FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT failed as it did not have exclusive full-screen access"},
+    // {VK_ERROR_VALIDATION_FAILED, "A command failed because invalid usage was detected by the implementation or a validation layer "},
+    {VK_ERROR_COMPRESSION_EXHAUSTED_EXT, "An image creation failed because internal resources required for compression are exhausted"},
+    {VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR, "The requested VkImageUsageFlags are not supported"},
+    {VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR, "The requested video picture layout is not supported"},
+    {VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR, "A video profile operation specified via VkVideoProfileInfoKHR::videoCodecOperation is not supported"},
+    {VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR, "Format parameters in a requested VkVideoProfileInfoKHR chain are not supported"},
+    {VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR, "Codec-specific parameters in a requested VkVideoProfileInfoKHR chain are not supported"},
+    {VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR, "The specified video Std header version is not supported"},
+    {VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR, "The specified Video Std parameters do not adhere to the syntactic or semantic requirements of the used video compression standard, or values derived from parameters according to the rules defined by the used video compression standard do not adhere to the capabilities of the video compression standard or the implementation"},
+    // {VK_ERROR_NOT_PERMITTED, "The driver implementation has denied a request to acquire a priority above the default priority (VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_EXT) because the application does not have sufficient privileges"},
+    // {VK_ERROR_NOT_ENOUGH_SPACE_KHR, "The application did not provide enough space to return all the required data"},
+    {VK_ERROR_UNKNOWN, "An unknown error has occurred; either the application has provided invalid input, or an implementation failure has occurred"}
+};
+
+static void VulkanCheckError(VkResult result)
+{
+    if (result == VK_SUCCESS)
+        return;
+    
+    std::string file = __FILE__;
+    std::string line = std::to_string(__LINE__);
+    std::string errorString = "Error: " + VulkanErrorToString.at(result) + "\nin file " + file + "\nline: " + line + "\n";
+    throw std::runtime_error(errorString);
+}
+
 ParticleSystemApplication::ParticleSystemApplication()
 {
 }
@@ -68,10 +132,10 @@ void ParticleSystemApplication::initWindow()
 bool ParticleSystemApplication::checkValidationLayerSupport()
 {
     uint32_t layerCount;
-    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+    VulkanCheckError(vkEnumerateInstanceLayerProperties(&layerCount, nullptr));
 
     std::vector<VkLayerProperties> availableLayers(layerCount);
-    vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+    VulkanCheckError(vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data()));
 
     for (const char* layerName : validationLayers)
     {
@@ -205,8 +269,7 @@ void ParticleSystemApplication::createInstance()
     else
         createInfo.enabledLayerCount = 0;
 
-    if (vkCreateInstance(&createInfo, nullptr, &instance))
-        throw std::runtime_error("Failed to create instance.");
+    VulkanCheckError(vkCreateInstance(&createInfo, nullptr, &instance));
 }
 
 VkResult CreateDebugUtilsMessengerEXT
@@ -232,8 +295,7 @@ void ParticleSystemApplication::setupDebugMessenger()
     VkDebugUtilsMessengerCreateInfoEXT createInfo;
     populateDebugMessengerCreateInfo(createInfo);
 
-    if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS)
-        throw std::runtime_error("Failed to set up debug messenger.");
+    VulkanCheckError(CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger));
 }
 
 QueueFamilyIndices ParticleSystemApplication::findQueueFamilies(VkPhysicalDevice device)
@@ -253,7 +315,7 @@ QueueFamilyIndices ParticleSystemApplication::findQueueFamilies(VkPhysicalDevice
             indices.graphicsAndComputeFamily = i;
 
         VkBool32 presentSupport = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+        VulkanCheckError(vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport));
 
         if (presentSupport)
             indices.presentFamily = i;
@@ -272,10 +334,10 @@ QueueFamilyIndices ParticleSystemApplication::findQueueFamilies(VkPhysicalDevice
 bool ParticleSystemApplication::checkDeviceExtensionSupport(VkPhysicalDevice device)
 {
     uint32_t extensionCount;
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+    VulkanCheckError(vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr));
 
     std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+    VulkanCheckError(vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data()));
 
     std::unordered_set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
 
@@ -288,22 +350,22 @@ bool ParticleSystemApplication::checkDeviceExtensionSupport(VkPhysicalDevice dev
 SwapChainSupportDetails ParticleSystemApplication::querySwapChainSupport(VkPhysicalDevice device)
 {
     SwapChainSupportDetails details;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+    VulkanCheckError(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities));
 
     uint32_t formatCount;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+    VulkanCheckError(vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr));
     if (formatCount != 0)
     {
         details.formats.resize(formatCount);
-        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+        VulkanCheckError(vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data()));
     }
 
     uint32_t presentModeCount;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+    VulkanCheckError(vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr));
     if (presentModeCount != 0)
     {
         details.presentModes.resize(presentModeCount);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
+        VulkanCheckError(vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data()));
     }
 
     return details;
@@ -336,7 +398,8 @@ VkExtent2D ParticleSystemApplication::chooseSwapExtent(const VkSurfaceCapabiliti
 
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
-    VkExtent2D actualExtent = {
+    VkExtent2D actualExtent =
+    {
         static_cast<uint32_t>(width),
         static_cast<uint32_t>(height)
     };
@@ -393,12 +456,11 @@ void ParticleSystemApplication::createSwapChain()
     // To change for resize window
     createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-    if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS)
-        throw std::runtime_error("Failed to create swap chain.");
+    VulkanCheckError(vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain));
 
-    vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
+    VulkanCheckError(vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr));
     swapChainImages.resize(imageCount);
-    vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
+    VulkanCheckError(vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data()));
     swapChainImageFormat = surfaceFormat.format;
     swapChainExtent = extent;
 }
@@ -431,8 +493,7 @@ void ParticleSystemApplication::createImage
     imageInfo.samples = numSamples;
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS)
-        throw std::runtime_error("Failed to create image.");
+    VulkanCheckError(vkCreateImage(device, &imageInfo, nullptr, &image));
 
     VkMemoryRequirements memRequirements;
     vkGetImageMemoryRequirements(device, image, &memRequirements);
@@ -442,10 +503,9 @@ void ParticleSystemApplication::createImage
     allocInfo.allocationSize = memRequirements.size;
     allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
 
-    if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS)
-        throw std::runtime_error("Failed to allocate image memory.");
+    VulkanCheckError(vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory));
 
-    vkBindImageMemory(device, image, imageMemory, 0);
+    VulkanCheckError(vkBindImageMemory(device, image, imageMemory, 0));
 }
 
 VkImageView ParticleSystemApplication::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
@@ -463,8 +523,7 @@ VkImageView ParticleSystemApplication::createImageView(VkImage image, VkFormat f
     viewInfo.subresourceRange.layerCount = 1;
 
     VkImageView imageView;
-    if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
-        throw std::runtime_error("failed to create image view!");
+    VulkanCheckError(vkCreateImageView(device, &viewInfo, nullptr, &imageView));
 
     return imageView;
 }
@@ -478,10 +537,8 @@ void ParticleSystemApplication::createImageViews()
     }
 }
 
-void ParticleSystemApplication::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
+void ParticleSystemApplication::copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
 {
-    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
     VkBufferImageCopy region{};
     region.bufferOffset = 0;
     region.bufferRowLength = 0;
@@ -504,9 +561,6 @@ void ParticleSystemApplication::copyBufferToImage(VkBuffer buffer, VkImage image
         1,
         &region
     );
-
-    endSingleTimeCommands(commandBuffer, graphicsAndComputeQueue);
-
 }
 
 void ParticleSystemApplication::loadModel()
@@ -558,7 +612,7 @@ void ParticleSystemApplication::loadModel()
     }
 }
 
-void ParticleSystemApplication::createTextureImage()
+void ParticleSystemApplication::createTextureImage(VkCommandBuffer commandBuffer)
 {
     int texWidth, texHeight, texChannels;
 
@@ -571,10 +625,10 @@ void ParticleSystemApplication::createTextureImage()
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     
-    createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+    createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, stagingBuffer, stagingBufferMemory);
 
     void* data;
-    vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+    VulkanCheckError(vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data));
     memcpy(data, pixels, static_cast<size_t>(imageSize));
     vkUnmapMemory(device, stagingBufferMemory);
     
@@ -593,10 +647,35 @@ void ParticleSystemApplication::createTextureImage()
         textureImageMemory
     );
 
-    transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-    transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    transition_image_layout
+    (
+        commandBuffer,
+        textureImage,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        0,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_IMAGE_ASPECT_COLOR_BIT
+    );
+    // transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    copyBufferToImage(commandBuffer, stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+    // transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
+    transition_image_layout
+    (
+        commandBuffer,
+        textureImage,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_IMAGE_ASPECT_COLOR_BIT
+    );
+    endSingleTimeCommands(commandBuffer, graphicsAndComputeQueue);
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
@@ -633,8 +712,7 @@ void ParticleSystemApplication::createTextureSampler()
     samplerInfo.minLod = 0.0f;
     samplerInfo.maxLod = 0.0f;
 
-    if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS)
-        throw std::runtime_error("failed to create texture sampler!");
+    VulkanCheckError(vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler));
 }
 
 void ParticleSystemApplication::createShadowMapTextureSampler()
@@ -665,27 +743,28 @@ void ParticleSystemApplication::createShadowMapTextureSampler()
     samplerInfo.minLod = 0.0f;
     samplerInfo.maxLod = 0.0f;
 
-    if (vkCreateSampler(device, &samplerInfo, nullptr, &shadowMapTextureSampler) != VK_SUCCESS)
-        throw std::runtime_error("failed to create texture sampler!");
+    VulkanCheckError(vkCreateSampler(device, &samplerInfo, nullptr, &shadowMapTextureSampler));
 }
 
-void ParticleSystemApplication::createBumpImage()
+void ParticleSystemApplication::createBumpImage(VkCommandBuffer commandBuffer)
 {
     int texWidth, texHeight, texChannels;
 
     stbi_uc* pixels = stbi_load(BUMP_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
+
+    std::cout << texWidth << " " << texHeight << "\n";
     if (!pixels)
         throw std::runtime_error("failed to load bump image!");
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     
-    createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+    createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, stagingBuffer, stagingBufferMemory);
 
     void* data;
-    vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+    VulkanCheckError(vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data));
     memcpy(data, pixels, static_cast<size_t>(imageSize));
     vkUnmapMemory(device, stagingBufferMemory);
     
@@ -704,10 +783,33 @@ void ParticleSystemApplication::createBumpImage()
         bumpImageMemory
     );
 
-    transitionImageLayout(bumpImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    copyBufferToImage(stagingBuffer, bumpImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-    transitionImageLayout(bumpImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    transition_image_layout
+    (
+        commandBuffer,
+        bumpImage,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        0,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_IMAGE_ASPECT_COLOR_BIT
+    );
+    copyBufferToImage(commandBuffer, stagingBuffer, bumpImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+    transition_image_layout
+    (
+        commandBuffer,
+        bumpImage,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_IMAGE_ASPECT_COLOR_BIT
+    );
 
+    endSingleTimeCommands(commandBuffer, graphicsAndComputeQueue);
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
@@ -779,13 +881,13 @@ int ParticleSystemApplication::rateDeviceSuitability(VkPhysicalDevice device)
 void ParticleSystemApplication::pickPhysicalDevice()
 {
     uint32_t deviceCount = 0;
-    vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+    VulkanCheckError(vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr));
 
     if (deviceCount == 0)
         throw std::runtime_error("Failed to find GPUs with Vulkan support.");
 
     std::vector<VkPhysicalDevice> devices(deviceCount);
-    vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+    VulkanCheckError(vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data()));
 
     std::multimap<int, VkPhysicalDevice> candidates;
 
@@ -862,8 +964,7 @@ void ParticleSystemApplication::createLogicalDevice()
     else
         createInfo.enabledLayerCount = 0;
 
-    if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS)
-        throw std::runtime_error("Failed to create logical device.");
+    VulkanCheckError(vkCreateDevice(physicalDevice, &createInfo, nullptr, &device));
 
     vkGetDeviceQueue(device, indices.graphicsAndComputeFamily.value(), 0, &graphicsAndComputeQueue);
     vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
@@ -871,8 +972,7 @@ void ParticleSystemApplication::createLogicalDevice()
 
 void ParticleSystemApplication::createSurface()
 {
-    if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
-        throw std::runtime_error("Failed to create window surface.");
+    VulkanCheckError(glfwCreateWindowSurface(instance, window, nullptr, &surface));
 }
 
 VkShaderModule ParticleSystemApplication::createShaderModule(const std::vector<char>& code)
@@ -883,8 +983,7 @@ VkShaderModule ParticleSystemApplication::createShaderModule(const std::vector<c
     createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
     VkShaderModule shaderModule;
 
-    if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-        throw std::runtime_error("failed to create shader module!");
+    VulkanCheckError(vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule));
     
     return shaderModule;
 }
@@ -1024,8 +1123,7 @@ void ParticleSystemApplication::createShadowMapModelPipeline()
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
-    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &shadowMapModelPipelineLayout) != VK_SUCCESS)
-        throw std::runtime_error("failed to create pipeline layout!");
+    VulkanCheckError(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &shadowMapModelPipelineLayout));
 
     VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo{};
     
@@ -1057,8 +1155,7 @@ void ParticleSystemApplication::createShadowMapModelPipeline()
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
     pipelineInfo.basePipelineIndex = -1;
 
-    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &shadowMapModelPipeline) != VK_SUCCESS)
-        throw std::runtime_error("failed to create graphics pipeline!");
+    VulkanCheckError(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &shadowMapModelPipeline));
 
     vkDestroyShaderModule(device, vertShaderModule, nullptr);
     vkDestroyShaderModule(device, fragShaderModule, nullptr);
@@ -1066,7 +1163,6 @@ void ParticleSystemApplication::createShadowMapModelPipeline()
 
 void ParticleSystemApplication::createShadowMapParticlePipeline()
 {
-
     auto vertShaderCode = readFile("shaders/shadows/particle.vert.spv");
     auto fragShaderCode = readFile("shaders/shadows/shader.frag.spv");
 
@@ -1213,8 +1309,7 @@ void ParticleSystemApplication::createShadowMapParticlePipeline()
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
-    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &shadowMapParticlePipelineLayout) != VK_SUCCESS)
-        throw std::runtime_error("failed to create pipeline layout!");
+    VulkanCheckError(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &shadowMapParticlePipelineLayout));
 
     VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo {};
     
@@ -1246,8 +1341,7 @@ void ParticleSystemApplication::createShadowMapParticlePipeline()
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
     pipelineInfo.basePipelineIndex = -1;
 
-    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &shadowMapParticlePipeline) != VK_SUCCESS)
-        throw std::runtime_error("failed to create graphics pipeline!");
+    VulkanCheckError(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &shadowMapParticlePipeline));
 
     vkDestroyShaderModule(device, vertShaderModule, nullptr);
     vkDestroyShaderModule(device, fragShaderModule, nullptr);
@@ -1401,8 +1495,7 @@ void ParticleSystemApplication::createGraphicsPipeline()
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
-    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &graphicsPipelineLayout) != VK_SUCCESS)
-        throw std::runtime_error("failed to create pipeline layout!");
+    VulkanCheckError(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &graphicsPipelineLayout));
 
     VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo{};
     
@@ -1434,8 +1527,7 @@ void ParticleSystemApplication::createGraphicsPipeline()
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
     pipelineInfo.basePipelineIndex = -1;
 
-    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
-        throw std::runtime_error("failed to create graphics pipeline!");
+    VulkanCheckError(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
 
     vkDestroyShaderModule(device, vertShaderModule, nullptr);
     vkDestroyShaderModule(device, fragShaderModule, nullptr);
@@ -1589,8 +1681,7 @@ void ParticleSystemApplication::createParticleGraphicsPipeline()
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
-    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &particleGraphicsPipelineLayout) != VK_SUCCESS)
-        throw std::runtime_error("failed to create pipeline layout!");
+    VulkanCheckError(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &particleGraphicsPipelineLayout));
 
     VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo {};
     
@@ -1622,8 +1713,7 @@ void ParticleSystemApplication::createParticleGraphicsPipeline()
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
     pipelineInfo.basePipelineIndex = -1;
 
-    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &particleGraphicsPipeline) != VK_SUCCESS)
-        throw std::runtime_error("failed to create graphics pipeline!");
+    VulkanCheckError(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &particleGraphicsPipeline));
 
     vkDestroyShaderModule(device, vertShaderModule, nullptr);
     vkDestroyShaderModule(device, fragShaderModule, nullptr);
@@ -1646,16 +1736,14 @@ void ParticleSystemApplication::createParticleInitPipeline()
     pipelineLayoutInfo.setLayoutCount = 1;
     pipelineLayoutInfo.pSetLayouts = &particleInitDescriptorSetLayout;
 
-    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &particleInitPipelineLayout) != VK_SUCCESS)
-        throw std::runtime_error("Failed to create particle init pipeline layout.");
+    VulkanCheckError(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &particleInitPipelineLayout));
         
     VkComputePipelineCreateInfo pipelineInfo{};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     pipelineInfo.layout = particleInitPipelineLayout;
     pipelineInfo.stage = computeShaderStageInfo;
 
-    if (vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &particleInitPipeline) != VK_SUCCESS)
-        throw std::runtime_error("Failed to create particle init pipeline.");
+    VulkanCheckError(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &particleInitPipeline));
     
     vkDestroyShaderModule(device, computeShaderModule, nullptr);
 
@@ -1679,16 +1767,14 @@ void ParticleSystemApplication::createParticleUpdatePipeline()
     pipelineLayoutInfo.setLayoutCount = 1;
     pipelineLayoutInfo.pSetLayouts = &particleInitDescriptorSetLayout;
 
-    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &particleUpdatePipelineLayout) != VK_SUCCESS)
-        throw std::runtime_error("Failed to create particle init pipeline layout.");
+    VulkanCheckError(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &particleUpdatePipelineLayout));
         
     VkComputePipelineCreateInfo pipelineInfo{};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     pipelineInfo.layout = particleUpdatePipelineLayout;
     pipelineInfo.stage = computeShaderStageInfo;
 
-    if (vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &particleUpdatePipeline) != VK_SUCCESS)
-        throw std::runtime_error("Failed to create particle init pipeline.");
+    VulkanCheckError(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &particleUpdatePipeline));
     
     vkDestroyShaderModule(device, computeShaderModule, nullptr);
 
@@ -1705,8 +1791,7 @@ void ParticleSystemApplication::createCommandPool()
     poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsAndComputeFamily.value();
 
-    if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
-        throw std::runtime_error("Failed to create command pool.");
+    VulkanCheckError(vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool));
 
 
 }
@@ -1722,11 +1807,9 @@ void ParticleSystemApplication::createCommandBuffer()
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     allocInfo.commandBufferCount = kNumberOfFramesInFlight;
 
-    if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffer.data()) != VK_SUCCESS)
-        throw std::runtime_error("Failed to allocate command buffers.");
+    VulkanCheckError(vkAllocateCommandBuffers(device, &allocInfo, commandBuffer.data()));
 
-    if (vkAllocateCommandBuffers(device, &allocInfo, computeCommandBuffer.data()) != VK_SUCCESS)
-        throw std::runtime_error("Failed to allocate command buffers.");
+    VulkanCheckError(vkAllocateCommandBuffers(device, &allocInfo, computeCommandBuffer.data()));
 
 }
 
@@ -1848,8 +1931,7 @@ void ParticleSystemApplication::recordCommandBuffer(VkCommandBuffer commandBuffe
     beginInfo.flags = 0;
     beginInfo.pInheritanceInfo = nullptr;
 
-    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
-        throw std::runtime_error("Failed to begin recording command buffer.");
+    VulkanCheckError(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
     std::array<VkClearValue, 2> clearValues{};
     clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
@@ -2062,8 +2144,7 @@ void ParticleSystemApplication::recordCommandBuffer(VkCommandBuffer commandBuffe
     //     VK_IMAGE_ASPECT_COLOR_BIT
     // );
 
-    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
-        throw std::runtime_error("Failed to record command buffer.");
+    VulkanCheckError(vkEndCommandBuffer(commandBuffer));
 }
 
 void ParticleSystemApplication::createSyncObjects()
@@ -2084,19 +2165,15 @@ void ParticleSystemApplication::createSyncObjects()
 
     for (uint i = 0; i < kNumberOfFramesInFlight; i++)
     {
-        if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore[i]) != VK_SUCCESS ||
-            vkCreateFence(device, &fenceInfo, nullptr, &inFlightFence[i]) != VK_SUCCESS )
-            throw std::runtime_error("Failed to create semaphores.");
-
-        if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &computeFinishedSemaphore[i]) != VK_SUCCESS ||
-            vkCreateFence(device, &fenceInfo, nullptr, &computeInFlightFences[i]) != VK_SUCCESS)
-            throw std::runtime_error("Failed to create compute semaphores.");
+        VulkanCheckError(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore[i]));
+        VulkanCheckError(vkCreateFence(device, &fenceInfo, nullptr, &inFlightFence[i]));
+        VulkanCheckError(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &computeFinishedSemaphore[i]));
+        VulkanCheckError(vkCreateFence(device, &fenceInfo, nullptr, &computeInFlightFences[i]));
     }
 
     for (uint i = 0; i < swapChainImages.size(); i++)
     {
-        if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphore[i]) != VK_SUCCESS)
-            throw std::runtime_error("Failed to create semaphores.");
+        VulkanCheckError(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphore[i]));
     }
 }
 
@@ -2108,8 +2185,7 @@ void ParticleSystemApplication::createBuffer(VkDeviceSize size, VkBufferUsageFla
     bufferInfo.usage = usage;
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
-        throw std::runtime_error("failed to create buffer!");
+    VulkanCheckError(vkCreateBuffer(device, &bufferInfo, nullptr, &buffer));
 
     VkMemoryRequirements memRequirements;
     vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
@@ -2119,15 +2195,14 @@ void ParticleSystemApplication::createBuffer(VkDeviceSize size, VkBufferUsageFla
     allocInfo.allocationSize = memRequirements.size;
     allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
 
-    if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
-        throw std::runtime_error("failed to allocate buffer memory!");
+    VulkanCheckError(vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory));
 
-    vkBindBufferMemory(device, buffer, bufferMemory, 0);
+    VulkanCheckError(vkBindBufferMemory(device, buffer, bufferMemory, 0));
 }
 
-void ParticleSystemApplication::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+void ParticleSystemApplication::copyBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 {
-    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+    // VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
     VkBufferCopy copyRegion{};
     copyRegion.srcOffset = 0;
@@ -2135,25 +2210,26 @@ void ParticleSystemApplication::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffe
     copyRegion.size = size;
     vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
-    endSingleTimeCommands(commandBuffer, graphicsAndComputeQueue);
+    // endSingleTimeCommands(commandBuffer, graphicsAndComputeQueue);
 }
 
-void ParticleSystemApplication::createVertexBuffer()
+void ParticleSystemApplication::createVertexBuffer(VkCommandBuffer commandBuffer)
 {
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
-    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, stagingBuffer, stagingBufferMemory);
 
     void* data;
-    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    VulkanCheckError(vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data));
     memcpy(data, vertices.data(), (size_t) bufferSize);
     vkUnmapMemory(device, stagingBufferMemory);
 
     createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-    copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+    copyBuffer(commandBuffer, stagingBuffer, vertexBuffer, bufferSize);
 
+    endSingleTimeCommands(commandBuffer, graphicsAndComputeQueue);
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
@@ -2185,30 +2261,31 @@ uint32_t ParticleSystemApplication::findMemoryType(uint32_t typeFilter, VkMemory
     throw std::runtime_error("Failed to find suitable memory type.");
 }
 
-void ParticleSystemApplication::createIndexBuffer()
+void ParticleSystemApplication::createIndexBuffer(VkCommandBuffer commandBuffer)
 {
     VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
-    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, stagingBuffer, stagingBufferMemory);
 
     void* data;
-    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    VulkanCheckError(vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data));
     memcpy(data, indices.data(), (size_t) bufferSize);
     vkUnmapMemory(device, stagingBufferMemory);
 
     createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
 
-    copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+    copyBuffer(commandBuffer, stagingBuffer, indexBuffer, bufferSize);
 
+    endSingleTimeCommands(commandBuffer, graphicsAndComputeQueue);
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
 void ParticleSystemApplication::createDescriptorSetLayout()
 {
-    std::array<VkDescriptorSetLayoutBinding, 6> bindings;
+    std::array<VkDescriptorSetLayoutBinding, 5> bindings;
 
     // VkDescriptorSetLayoutBinding uboLayoutBinding{};
     bindings[0].binding = 0;
@@ -2243,11 +2320,11 @@ void ParticleSystemApplication::createDescriptorSetLayout()
     bindings[4].pImmutableSamplers = nullptr;
     bindings[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    bindings[5].binding = 5;
-    bindings[5].descriptorCount = 1;
-    bindings[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    bindings[5].pImmutableSamplers = nullptr;
-    bindings[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    // bindings[5].binding = 5;
+    // bindings[5].descriptorCount = 1;
+    // bindings[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    // bindings[5].pImmutableSamplers = nullptr;
+    // bindings[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
     // bindings[0] = uboLayoutBinding;
     // bindings[1] = sceneDataLayoutBinding;
@@ -2258,13 +2335,12 @@ void ParticleSystemApplication::createDescriptorSetLayout()
     layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
     layoutInfo.pBindings = bindings.data();
 
-    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
-        throw std::runtime_error("Failed to create descriptor set layout.");
+    VulkanCheckError(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout));
 }
 
 void ParticleSystemApplication::createComputeDescriptorSetLayout()
 {
-    std::array<VkDescriptorSetLayoutBinding, 3> layoutBindings{};
+    std::array<VkDescriptorSetLayoutBinding, 4> layoutBindings{};
     layoutBindings[0].binding = 0;
     layoutBindings[0].descriptorCount = 1;
     layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -2283,13 +2359,18 @@ void ParticleSystemApplication::createComputeDescriptorSetLayout()
     layoutBindings[2].pImmutableSamplers = nullptr;
     layoutBindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
+    layoutBindings[3].binding = 3;
+    layoutBindings[3].descriptorCount = 1;
+    layoutBindings[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    layoutBindings[3].pImmutableSamplers = nullptr;
+    layoutBindings[3].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     layoutInfo.bindingCount = layoutBindings.size();
     layoutInfo.pBindings = layoutBindings.data();
 
-    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &particleInitDescriptorSetLayout) != VK_SUCCESS)
-        throw std::runtime_error("Failed to create compute descriptor set layout.");
+    VulkanCheckError(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &particleInitDescriptorSetLayout));
 }
 
 void ParticleSystemApplication::createShadowMapDescriptorSetLayout()
@@ -2306,9 +2387,7 @@ void ParticleSystemApplication::createShadowMapDescriptorSetLayout()
     layoutInfo.bindingCount = 1;
     layoutInfo.pBindings = &layoutBinding;
 
-    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &shadowMapDescriptorSetLayout) != VK_SUCCESS)
-        throw std::runtime_error("Failed to create shadow map descriptor set layout.");
-
+    VulkanCheckError(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &shadowMapDescriptorSetLayout));
 }
 
 
@@ -2322,9 +2401,8 @@ void ParticleSystemApplication::createUniformBuffers()
 
     for (size_t i = 0; i < kNumberOfFramesInFlight; i++)
     {
-        createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
-
-        vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+        createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
+        VulkanCheckError(vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]));
     }
 }
 
@@ -2338,9 +2416,8 @@ void ParticleSystemApplication::createSceneDataBuffers()
 
     for (size_t i = 0; i < kNumberOfFramesInFlight; i++)
     {
-        createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sceneDataBuffers[i], sceneDataBuffersMemory[i]);
-
-        vkMapMemory(device, sceneDataBuffersMemory[i], 0, bufferSize, 0, &sceneDataBuffersMapped[i]);
+        createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, sceneDataBuffers[i], sceneDataBuffersMemory[i]);
+        VulkanCheckError(vkMapMemory(device, sceneDataBuffersMemory[i], 0, bufferSize, 0, &sceneDataBuffersMapped[i]));
     }
 }
 
@@ -2354,9 +2431,8 @@ void ParticleSystemApplication::createShadowMapUniformBuffers()
 
     for (size_t i = 0; i < kNumberOfFramesInFlight; i++)
     {
-        createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, shadowMapUniformBuffers[i], shadowMapUniformBuffersMemory[i]);
-
-        vkMapMemory(device, shadowMapUniformBuffersMemory[i], 0, bufferSize, 0, &shadowMapUniformBuffersMapped[i]);
+        createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, shadowMapUniformBuffers[i], shadowMapUniformBuffersMemory[i]);
+        VulkanCheckError(vkMapMemory(device, shadowMapUniformBuffersMemory[i], 0, bufferSize, 0, &shadowMapUniformBuffersMapped[i]));
     }
 }
 
@@ -2383,9 +2459,7 @@ void ParticleSystemApplication::createDescriptorPool()
         poolInfo.maxSets += poolSize.descriptorCount;
     }
 
-    if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
-        throw std::runtime_error("failed to create descriptor pool!");
-
+    VulkanCheckError(vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool));
 }
 
 void ParticleSystemApplication::createDescriptorSets()
@@ -2416,14 +2490,11 @@ void ParticleSystemApplication::createDescriptorSets()
     computeDescriptorSets.resize(kNumberOfFramesInFlight);
     shadowMapDescriptorSets.resize(kNumberOfFramesInFlight);
 
-    if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS)
-        throw std::runtime_error("failed to allocate descriptor sets!");
+    VulkanCheckError(vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()));
 
-    if (vkAllocateDescriptorSets(device, &computeAllocInfo, computeDescriptorSets.data()) != VK_SUCCESS)
-        throw std::runtime_error("failed to allocate descriptor sets!");
+    VulkanCheckError(vkAllocateDescriptorSets(device, &computeAllocInfo, computeDescriptorSets.data()));
 
-    if (vkAllocateDescriptorSets(device, &shadowMapAllocInfo, shadowMapDescriptorSets.data()) != VK_SUCCESS)
-        throw std::runtime_error("failed to allocate descriptor sets!");
+    VulkanCheckError(vkAllocateDescriptorSets(device, &shadowMapAllocInfo, shadowMapDescriptorSets.data()));
 
     for (size_t i = 0; i < kNumberOfFramesInFlight; i++)
     {
@@ -2487,10 +2558,23 @@ void ParticleSystemApplication::createDescriptorSets()
         descriptorWrites[3].descriptorCount = 1;
         descriptorWrites[3].pImageInfo = &imageInfo;
 
-        VkDescriptorImageInfo bumpImageInfo{};
-        bumpImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        bumpImageInfo.imageView = bumpImageView;
-        bumpImageInfo.sampler = textureSampler;
+        // VkDescriptorImageInfo bumpImageInfo{};
+        // bumpImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        // bumpImageInfo.imageView = bumpImageView;
+        // bumpImageInfo.sampler = textureSampler;
+
+        // descriptorWrites[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        // descriptorWrites[4].dstSet = descriptorSets[i];
+        // descriptorWrites[4].dstBinding = 4;
+        // descriptorWrites[4].dstArrayElement = 0;
+        // descriptorWrites[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        // descriptorWrites[4].descriptorCount = 1;
+        // descriptorWrites[4].pImageInfo = &bumpImageInfo;
+
+        VkDescriptorImageInfo shadowMapTextureImageInfo{};
+        shadowMapTextureImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        shadowMapTextureImageInfo.imageView = depthMapView;
+        shadowMapTextureImageInfo.sampler = shadowMapTextureSampler;
 
         descriptorWrites[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[4].dstSet = descriptorSets[i];
@@ -2498,46 +2582,46 @@ void ParticleSystemApplication::createDescriptorSets()
         descriptorWrites[4].dstArrayElement = 0;
         descriptorWrites[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         descriptorWrites[4].descriptorCount = 1;
-        descriptorWrites[4].pImageInfo = &bumpImageInfo;
-
-        VkDescriptorImageInfo shadowMapTextureImageInfo{};
-        shadowMapTextureImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        shadowMapTextureImageInfo.imageView = depthMapView;
-        shadowMapTextureImageInfo.sampler = shadowMapTextureSampler;
-
-        descriptorWrites[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[5].dstSet = descriptorSets[i];
-        descriptorWrites[5].dstBinding = 5;
-        descriptorWrites[5].dstArrayElement = 0;
-        descriptorWrites[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[5].descriptorCount = 1;
-        descriptorWrites[5].pImageInfo = &shadowMapTextureImageInfo;
+        descriptorWrites[4].pImageInfo = &shadowMapTextureImageInfo;
         
         VkDescriptorBufferInfo storageBufferInfoLastFrame{};
         storageBufferInfoLastFrame.buffer = shaderStorageBuffers[(i - 1) % kNumberOfFramesInFlight];
         storageBufferInfoLastFrame.offset = 0;
         storageBufferInfoLastFrame.range = sizeof(Particle) * PARTICLE_NUMBER;
 
-        descriptorWrites[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[6].dstSet = computeDescriptorSets[i];
-        descriptorWrites[6].dstBinding = 1;
-        descriptorWrites[6].dstArrayElement = 0;
-        descriptorWrites[6].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptorWrites[6].descriptorCount = 1;
-        descriptorWrites[6].pBufferInfo = &storageBufferInfoLastFrame;
+        descriptorWrites[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[5].dstSet = computeDescriptorSets[i];
+        descriptorWrites[5].dstBinding = 1;
+        descriptorWrites[5].dstArrayElement = 0;
+        descriptorWrites[5].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrites[5].descriptorCount = 1;
+        descriptorWrites[5].pBufferInfo = &storageBufferInfoLastFrame;
 
         VkDescriptorBufferInfo storageBufferInfoCurrentFrame{};
         storageBufferInfoCurrentFrame.buffer = shaderStorageBuffers[i];
         storageBufferInfoCurrentFrame.offset = 0;
         storageBufferInfoCurrentFrame.range = sizeof(Particle) * PARTICLE_NUMBER;
 
+        descriptorWrites[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[6].dstSet = computeDescriptorSets[i];
+        descriptorWrites[6].dstBinding = 2;
+        descriptorWrites[6].dstArrayElement = 0;
+        descriptorWrites[6].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrites[6].descriptorCount = 1;
+        descriptorWrites[6].pBufferInfo = &storageBufferInfoCurrentFrame;
+
+        VkDescriptorImageInfo bumpImageInfo{};
+        bumpImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        bumpImageInfo.imageView = bumpImageView;
+        bumpImageInfo.sampler = textureSampler;
+
         descriptorWrites[7].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[7].dstSet = computeDescriptorSets[i];
-        descriptorWrites[7].dstBinding = 2;
+        descriptorWrites[7].dstBinding = 3;
         descriptorWrites[7].dstArrayElement = 0;
-        descriptorWrites[7].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrites[7].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         descriptorWrites[7].descriptorCount = 1;
-        descriptorWrites[7].pBufferInfo = &storageBufferInfoCurrentFrame;
+        descriptorWrites[7].pImageInfo = &bumpImageInfo;
 
         descriptorWrites[8].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[8].dstSet = shadowMapDescriptorSets[i];
@@ -2565,7 +2649,6 @@ void ParticleSystemApplication::initVulkan()
     createLogicalDevice();
     createSwapChain();
     createImageViews();
-    // createRenderPass();
     createComputeDescriptorSetLayout();
     createDescriptorSetLayout();
     createShadowMapDescriptorSetLayout();
@@ -2581,22 +2664,26 @@ void ParticleSystemApplication::initVulkan()
     createColorResources();
     createDepthResources();  
 
-    // createFramebuffers();
     loadModel();
 
-    createVertexBuffer();  
-    createIndexBuffer();
+    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+    createVertexBuffer(commandBuffer);  
+    commandBuffer = beginSingleTimeCommands();
+    createIndexBuffer(commandBuffer);
+
     createStorageBuffers();
     createUniformBuffers();  
     createSceneDataBuffers();
     createShadowMapUniformBuffers();
 
-    createTextureImage();
+    commandBuffer = beginSingleTimeCommands();
+    createTextureImage(commandBuffer);
     createTextureImageView();
     createTextureSampler();
     createShadowMapTextureSampler();
 
-    createBumpImage();
+    commandBuffer = beginSingleTimeCommands();
+    createBumpImage(commandBuffer);
     createBumpImageView();
 
     createDepthMap();
@@ -2621,7 +2708,6 @@ void ParticleSystemApplication::updateUniformBuffer(uint32_t currentImage)
     ubo.proj[1][1] *= -1;
     ubo.projViewModel = ubo.proj * ubo.view * ubo.model;
 
-
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 
     SceneData scene{};
@@ -2633,7 +2719,7 @@ void ParticleSystemApplication::updateUniformBuffer(uint32_t currentImage)
 
     ubo.model = glm::mat4(1.0f);
     ubo.view = glm::lookAt(glm::vec3(10.0f, 2.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-    ubo.proj = glm::ortho(-10.0f, 10.0f, 10.0f, -10.0f, -20.0f, 20.0f);
+    ubo.proj = glm::ortho(-7.0f, 7.0f, 7.0f, -7.0f, 0.0f, 20.0f);
     // ubo.proj[1][1] *= -1;
     
     ubo.projViewModel = ubo.proj * ubo.view * ubo.model;
@@ -2655,7 +2741,6 @@ VkFormat ParticleSystemApplication::findSupportedFormat(const std::vector<VkForm
         else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
             return format;
     }
-
     throw std::runtime_error("Failed to find supported format.");
 }
 
@@ -2673,28 +2758,28 @@ VkCommandBuffer ParticleSystemApplication::beginSingleTimeCommands()
     allocInfo.commandBufferCount = 1;
 
     VkCommandBuffer commandBuffer;
-    vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+    VulkanCheckError(vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer));
 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+    VulkanCheckError(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
     return commandBuffer;
 }
 
 void ParticleSystemApplication::endSingleTimeCommands(VkCommandBuffer commandBuffer, VkQueue submitQueue)
 {
-    vkEndCommandBuffer(commandBuffer);
+    VulkanCheckError(vkEndCommandBuffer(commandBuffer));
 
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &commandBuffer;
 
-    vkQueueSubmit(submitQueue, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(submitQueue);
+    VulkanCheckError(vkQueueSubmit(submitQueue, 1, &submitInfo, VK_NULL_HANDLE));
+    VulkanCheckError(vkQueueWaitIdle(submitQueue));
 
     vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }
@@ -2794,7 +2879,7 @@ void ParticleSystemApplication::createDepthResources()
     VkFormat depthFormat = findDepthFormat();
     createImage(swapChainExtent.width, swapChainExtent.height, msaaSamples, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
     depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-    transitionImageLayout(depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    // transitionImageLayout(depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 }
 
 void ParticleSystemApplication::createDepthMap()
@@ -2813,7 +2898,7 @@ void ParticleSystemApplication::createDepthMap()
         depthMapMemory
     );
     depthMapView = createImageView(depthMap, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-    transitionImageLayout(depthMap, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    // transitionImageLayout(depthMap, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 }
 
 void ParticleSystemApplication::updateParticles()
@@ -2825,10 +2910,10 @@ void ParticleSystemApplication::updateParticles()
     }
     else
     {
-        vkWaitForFences(device, 1, &computeInFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-        vkResetFences(device, 1, &computeInFlightFences[currentFrame]);
+        VulkanCheckError(vkWaitForFences(device, 1, &computeInFlightFences[currentFrame], VK_TRUE, UINT64_MAX));
+        VulkanCheckError(vkResetFences(device, 1, &computeInFlightFences[currentFrame]));
 
-        vkResetCommandBuffer(computeCommandBuffer[currentFrame], 0);
+        VulkanCheckError(vkResetCommandBuffer(computeCommandBuffer[currentFrame], 0));
         recordComputeCommandBuffer(computeCommandBuffer[currentFrame], particleUpdatePipeline, particleUpdatePipelineLayout);
 
         VkSubmitInfo submitInfo{};
@@ -2838,18 +2923,16 @@ void ParticleSystemApplication::updateParticles()
         submitInfo.pCommandBuffers = &computeCommandBuffer[currentFrame];
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = &computeFinishedSemaphore[currentFrame];
-
-        if (vkQueueSubmit(graphicsAndComputeQueue, 1, &submitInfo, computeInFlightFences[currentFrame]) != VK_SUCCESS)
-            throw std::runtime_error("Failed to submit draw command buffer.");
+        VulkanCheckError(vkQueueSubmit(graphicsAndComputeQueue, 1, &submitInfo, computeInFlightFences[currentFrame]));
     }
 }
 
 void ParticleSystemApplication::resetParticle()
 {
-    vkWaitForFences(device, 1, &computeInFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-    vkResetFences(device, 1, &computeInFlightFences[currentFrame]);
+    VulkanCheckError(vkWaitForFences(device, 1, &computeInFlightFences[currentFrame], VK_TRUE, UINT64_MAX));
+    VulkanCheckError(vkResetFences(device, 1, &computeInFlightFences[currentFrame]));
 
-    vkResetCommandBuffer(computeCommandBuffer[currentFrame], 0);
+    VulkanCheckError(vkResetCommandBuffer(computeCommandBuffer[currentFrame], 0));
     recordComputeCommandBuffer(computeCommandBuffer[currentFrame], particleInitPipeline, particleInitPipelineLayout);
 
     VkSubmitInfo submitInfo{};
@@ -2860,8 +2943,7 @@ void ParticleSystemApplication::resetParticle()
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &computeFinishedSemaphore[currentFrame];
 
-    if (vkQueueSubmit(graphicsAndComputeQueue, 1, &submitInfo, computeInFlightFences[currentFrame]) != VK_SUCCESS)
-        throw std::runtime_error("Failed to submit draw command buffer.");
+    VulkanCheckError(vkQueueSubmit(graphicsAndComputeQueue, 1, &submitInfo, computeInFlightFences[currentFrame]));
 }
 
 void ParticleSystemApplication::recordComputeCommandBuffer(VkCommandBuffer commandBuffer, VkPipeline computePipeline, VkPipelineLayout computePipelineLayout)
@@ -2871,30 +2953,28 @@ void ParticleSystemApplication::recordComputeCommandBuffer(VkCommandBuffer comma
     beginInfo.flags = 0;
     beginInfo.pInheritanceInfo = nullptr;
 
-    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
-        throw std::runtime_error("Failed to begin recording compute command buffer.");
+    VulkanCheckError(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1, &computeDescriptorSets[currentFrame], 0, 0);
     vkCmdDispatch(commandBuffer, PARTICLE_NUMBER / 64, 1, 1);
 
-    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
-        throw std::runtime_error("failed to record compute command buffer!");
+    VulkanCheckError(vkEndCommandBuffer(commandBuffer));
 }
 
 
 void ParticleSystemApplication::drawFrame()
 {
-    vkWaitForFences(device, 1, &inFlightFence[currentFrame], VK_TRUE, UINT64_MAX);
-    vkResetFences(device, 1, &inFlightFence[currentFrame]);
+    VulkanCheckError(vkWaitForFences(device, 1, &inFlightFence[currentFrame], VK_TRUE, UINT64_MAX));
+    VulkanCheckError(vkResetFences(device, 1, &inFlightFence[currentFrame]));
 
     uint32_t imageIndex;
-    vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore[currentFrame], VK_NULL_HANDLE, &imageIndex);
+    VulkanCheckError(vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore[currentFrame], VK_NULL_HANDLE, &imageIndex));
 
     updateUniformBuffer(currentFrame);
 
 
-    vkResetCommandBuffer(commandBuffer[currentFrame], 0);
+    VulkanCheckError(vkResetCommandBuffer(commandBuffer[currentFrame], 0));
     recordCommandBuffer(commandBuffer[currentFrame], imageIndex);
 
 
@@ -2913,9 +2993,7 @@ void ParticleSystemApplication::drawFrame()
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    if (vkQueueSubmit(graphicsAndComputeQueue, 1, &submitInfo, inFlightFence[currentFrame]) != VK_SUCCESS)
-        throw std::runtime_error("Failed to submit draw command buffer.");
-
+    VulkanCheckError(vkQueueSubmit(graphicsAndComputeQueue, 1, &submitInfo, inFlightFence[currentFrame]));
 
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -2928,7 +3006,7 @@ void ParticleSystemApplication::drawFrame()
     presentInfo.pImageIndices = &imageIndex;
 
     presentInfo.pResults = nullptr;
-    vkQueuePresentKHR(presentQueue, &presentInfo);
+    VulkanCheckError(vkQueuePresentKHR(presentQueue, &presentInfo));
 
     currentFrame = (currentFrame + 1) % kNumberOfFramesInFlight; 
 }
@@ -2941,7 +3019,7 @@ void ParticleSystemApplication::mainLoop()
         updateParticles();
         drawFrame();
     }
-    vkDeviceWaitIdle(device);
+    VulkanCheckError(vkDeviceWaitIdle(device));
 
 }
 
