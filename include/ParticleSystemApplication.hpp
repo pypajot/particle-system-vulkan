@@ -56,6 +56,8 @@ struct SwapChainSupportDetails
 class ParticleSystemApplication
 {
     public:
+        bool framebufferResized = false;
+        
         ParticleSystemApplication();
         ParticleSystemApplication(const ParticleSystemApplication &other) = delete;
         ParticleSystemApplication &operator=(const ParticleSystemApplication &other) = delete;
@@ -245,8 +247,9 @@ class ParticleSystemApplication
         void createLogicalDevice();
         void createSurface();
         void createSwapChain();
+        void recreateSwapChain();
+        void cleanupSwapChain();
         void createImageViews();
-        // void createRenderPass();
 
         void createShadowMapModelPipeline();
         void createShadowMapParticlePipeline();

@@ -117,13 +117,23 @@ static std::vector<char> readFile(const std::string& filename)
     return buffer;
 }
 
+static void framebufferResizeCallback(GLFWwindow *window, int width, int height)
+{
+    (void)width;
+    (void)height;
+    auto app = reinterpret_cast<ParticleSystemApplication *>(glfwGetWindowUserPointer(window));
+    app->framebufferResized = true;
+}
+
 void ParticleSystemApplication::initWindow()
 {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
     window = glfwCreateWindow(BASE_WIN_WIDTH, BASE_WIN_HEIGHT, "Vulkan window", nullptr, nullptr);
+    glfwSetWindowUserPointer(window, this);
+    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 
     if (window == nullptr)
         throw std::runtime_error("Failed to create window.");
@@ -397,7 +407,8 @@ VkExtent2D ParticleSystemApplication::chooseSwapExtent(const VkSurfaceCapabiliti
     if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
         return capabilities.currentExtent;
 
-    int width, height;
+    int width;
+    int height;
     glfwGetFramebufferSize(window, &width, &height);
     VkExtent2D actualExtent =
     {
@@ -436,7 +447,6 @@ void ParticleSystemApplication::createSwapChain()
     QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
     uint32_t queueFamilyIndices[] = {indices.graphicsAndComputeFamily.value(), indices.presentFamily.value()};
 
-    // To change for better performance maybe ? , look up ownership for the swap chain images
     if (indices.graphicsAndComputeFamily != indices.presentFamily) 
     {
         createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
@@ -464,6 +474,32 @@ void ParticleSystemApplication::createSwapChain()
     VK_CHECK(vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data()));
     swapChainImageFormat = surfaceFormat.format;
     swapChainExtent = extent;
+}
+
+void ParticleSystemApplication::recreateSwapChain()
+{
+    int width = 0;
+    int height = 0;
+    while (width == 0 || height == 0)
+    {
+        glfwGetFramebufferSize(window, &width, &height);
+        glfwWaitEvents();
+    }
+
+    vkDeviceWaitIdle(device);
+    cleanupSwapChain();
+    createSwapChain();
+    createImageViews();
+}
+
+void ParticleSystemApplication::cleanupSwapChain()
+{
+    for (auto imageview : swapChainImageViews)
+    {
+        vkDestroyImageView(device, imageview, nullptr);
+    }
+    vkDestroySwapchainKHR(device, swapChain, nullptr);
+
 }
 
 void ParticleSystemApplication::createImage
@@ -2965,10 +3001,19 @@ void ParticleSystemApplication::recordComputeCommandBuffer(VkCommandBuffer comma
 void ParticleSystemApplication::drawFrame()
 {
     VK_CHECK(vkWaitForFences(device, 1, &inFlightFence[currentFrame], VK_TRUE, UINT64_MAX));
-    VK_CHECK(vkResetFences(device, 1, &inFlightFence[currentFrame]));
 
     uint32_t imageIndex;
-    VK_CHECK(vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore[currentFrame], VK_NULL_HANDLE, &imageIndex));
+    VkResult err = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore[currentFrame], VK_NULL_HANDLE, &imageIndex);
+    if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR || framebufferResized)
+    {
+        framebufferResized = false;
+        recreateSwapChain();
+        return;
+    }
+    else
+        VK_CHECK(err);
+
+    VK_CHECK(vkResetFences(device, 1, &inFlightFence[currentFrame]));
 
     updateUniformBuffer(currentFrame);
 
@@ -3033,6 +3078,7 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 
 void ParticleSystemApplication::cleanup()
 {
+    cleanupSwapChain();
     vkDestroyBuffer(device, indexBuffer, nullptr);
     vkFreeMemory(device, indexBufferMemory, nullptr);
 
@@ -3102,10 +3148,6 @@ void ParticleSystemApplication::cleanup()
     vkDestroyImage(device, colorImage, nullptr);
     vkFreeMemory(device, colorImageMemory, nullptr);
 
-    for (auto imageView : swapChainImageViews)
-        vkDestroyImageView(device, imageView, nullptr);
-
-    vkDestroySwapchainKHR(device, swapChain, nullptr);
     vkDestroyDevice(device, nullptr);
     
     if (enableValidationLayers)
