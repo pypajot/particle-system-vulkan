@@ -19,23 +19,24 @@ float computeShadow()
     vec3 coord = fragShadowTexCoord.xyz / fragShadowTexCoord.w;
     coord = coord * 0.5 + 0.5;
 
-    float closestDepth = texture(shadowSampler, coord.xy).r;
+    float closestDepth;
     float currentDepth = fragShadowTexCoord.z;
 
-    float shadow = 0.0f;
+    float shadow = 0.0;
     float bias = 0.05;
     vec2 texelSize = 1.0 / textureSize(shadowSampler, 0);
-    for (int i = -1; i<=1; i++)
+    for (float i = -0.5; i <= 0.5; i++)
     {
-        for (int j = -1; j<=1; j++)
+        for (float j = -0.5; j <= 0.5; j++)
         {
             closestDepth = texture(shadowSampler, coord.xy + vec2(i, j) * texelSize).r;
             if (currentDepth - closestDepth > bias)
-                shadow += 1.0f;
+                shadow += 1.0;
         }
     }
-    shadow /= 9.0;
-
+    shadow /= 4.0;
+    // if (currentDepth - closestDepth > bias)
+    //             shadow += 1.0;
     return shadow;
 }
 
@@ -48,7 +49,7 @@ void main()
     // if (lightIntensity < 0.0f)
     //     lightIntensity = 0.0f;
     // lightIntensity += scene.ambientLight.x;
-    outColor = inColor * ((1 - computeShadow()) + scene.ambientLight);
+    outColor = inColor * ((1.0 - computeShadow()) + scene.ambientLight);
     // outColor = vec4(closestDepth, currentDepth, 0.0f, 1.0f);
 }
 

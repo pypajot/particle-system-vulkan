@@ -64,7 +64,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	$(CC) $(CPPFLAGS) -o $@ -c $< -I$(INCS) -I$(PATH_TO_STB)
 
 $(SHADERDIR)/%.spv: $(SHADERDIR)/%
-	glslangValidator $< -V -o $@
+	glslangValidator -V $< -o $@ -gVS
 
 shader: $(SHADERSPV)
 

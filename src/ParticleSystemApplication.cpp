@@ -753,8 +753,6 @@ void ParticleSystemApplication::createBumpImage(VkCommandBuffer commandBuffer)
     stbi_uc* pixels = stbi_load(BUMP_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
-
-    std::cout << texWidth << " " << texHeight << "\n";
     if (!pixels)
         throw std::runtime_error("failed to load bump image!");
 

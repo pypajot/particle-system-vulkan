@@ -34,13 +34,13 @@ float computeShadow(float angle)
     float bias = max(0.005, 0.05 * (1 - angle));
     vec2 texelSize = 1.0 / textureSize(shadowSampler, 0);
 
-    for (int i = -1; i<=1; i++)
+    for (float i = -1.0; i <= 1.0; i++)
     {
-        for (int j = -1; j<=1; j++)
+        for (float j = -1.0; j <= 1.0; j++)
         {
             closestDepth = texture(shadowSampler, coord.xy + vec2(i, j) * texelSize).r;
             if (currentDepth - closestDepth > bias)
-                shadow += 1.0f;
+                shadow += 1.0;
         }
     }
     shadow /= 9.0;

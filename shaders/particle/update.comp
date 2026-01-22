@@ -21,9 +21,9 @@ layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 void main()
 {
-    uint index = gl_GlobalInvocationID.x;
+    uint index = gl_GlobalInvocationID.x;    
     float dist = dot(particlesIn[index].position, particlesIn[index].position);
-    vec4 direction = particlesIn[index].position / sqrt(dist);
+    vec4 direction = normalize(particlesIn[index].position);
     particlesOut[index].velocity = particlesIn[index].velocity - direction * 1 * 0.01 / dist;
     particlesOut[index].position = particlesIn[index].position + particlesIn[index].velocity * 0.01;
     particlesOut[index].color = particlesIn[index].color;
