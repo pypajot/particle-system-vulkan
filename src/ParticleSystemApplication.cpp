@@ -89,7 +89,7 @@ static void VulkanCheckError(VkResult result, const char *file, int lineNumber)
     return;
     
     std::string line = std::to_string(lineNumber);
-    std::string errorString = "Error: " + VulkanErrorToString.at(result) + "\nin file " + file + "\nline: " + line + "\n";
+    std::string errorString = "Error: " + VulkanErrorToString.at(result) + "\nin file " + file + "\nline: " + line;
     throw std::runtime_error(errorString);
 }
 
@@ -129,7 +129,7 @@ void ParticleSystemApplication::initWindow()
 {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+    // glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
     window = glfwCreateWindow(BASE_WIN_WIDTH, BASE_WIN_HEIGHT, "Vulkan window", nullptr, nullptr);
     glfwSetWindowUserPointer(window, this);
@@ -429,7 +429,7 @@ void ParticleSystemApplication::createSwapChain()
     VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
     VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
     VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
-
+    std::cout << extent.height << " " << extent.width << "\n";
     uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
     if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
         imageCount = swapChainSupport.capabilities.maxImageCount;
@@ -486,10 +486,13 @@ void ParticleSystemApplication::recreateSwapChain()
         glfwWaitEvents();
     }
 
-    vkDeviceWaitIdle(device);
+    VK_CHECK(vkDeviceWaitIdle(device));
     cleanupSwapChain();
     createSwapChain();
     createImageViews();
+    createColorResources();
+    createDepthResources();
+    frameBufferResizeRequested = false;
 }
 
 void ParticleSystemApplication::cleanupSwapChain()
@@ -500,6 +503,13 @@ void ParticleSystemApplication::cleanupSwapChain()
     }
     vkDestroySwapchainKHR(device, swapChain, nullptr);
 
+    vkDestroyImageView(device, depthImageView, nullptr);
+    vkDestroyImage(device, depthImage, nullptr);
+    vkFreeMemory(device, depthImageMemory, nullptr);
+
+    vkDestroyImageView(device, colorImageView, nullptr);
+    vkDestroyImage(device, colorImage, nullptr);
+    vkFreeMemory(device, colorImageMemory, nullptr);
 }
 
 void ParticleSystemApplication::createImage
@@ -2157,8 +2167,8 @@ void ParticleSystemApplication::recordCommandBuffer(VkCommandBuffer commandBuffe
     (
         commandBuffer,
         swapChainImages[imageIndex],
-        VkImageLayout::VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        VkImageLayout::VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
         VK_ACCESS_2_NONE_KHR,
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -3003,15 +3013,16 @@ void ParticleSystemApplication::drawFrame()
     VK_CHECK(vkWaitForFences(device, 1, &inFlightFence[currentFrame], VK_TRUE, UINT64_MAX));
 
     uint32_t imageIndex;
-    VkResult err = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore[currentFrame], VK_NULL_HANDLE, &imageIndex);
-    if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR || framebufferResized)
+    VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore[currentFrame], VK_NULL_HANDLE, &imageIndex);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || framebufferResized)
     {
+        std::cout << "test acquire\n";
         framebufferResized = false;
         recreateSwapChain();
         return;
     }
     else
-        VK_CHECK(err);
+        VK_CHECK(result);
 
     VK_CHECK(vkResetFences(device, 1, &inFlightFence[currentFrame]));
 
@@ -3050,7 +3061,35 @@ void ParticleSystemApplication::drawFrame()
     presentInfo.pImageIndices = &imageIndex;
 
     presentInfo.pResults = nullptr;
-    VK_CHECK(vkQueuePresentKHR(presentQueue, &presentInfo));
+
+    result = vkQueuePresentKHR(presentQueue, &presentInfo);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized)
+    {
+        // if (result == VK_ERROR_OUT_OF_DATE_KHR)
+        // {
+        //     VkSubmitInfo submitInfo = {};
+        //     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        //     submitInfo.commandBufferCount = 0;
+        //     submitInfo.pCommandBuffers = nullptr;
+        //     submitInfo.waitSemaphoreCount = 1;
+        //     submitInfo.pWaitSemaphores = signalSemaphores;
+        //     VkPipelineStageFlags waitStage[] = {VK_PIPELINE_STAGE_NONE};
+        //     submitInfo.pWaitDstStageMask = waitStage;
+            
+        //     VK_CHECK(vkQueueSubmit(graphicsAndComputeQueue, 1, &submitInfo, VK_NULL_HANDLE));
+        // }
+        std::cout << "test present\n";
+        framebufferResized = false;
+        recreateSwapChain();
+        // VkSemaphoreWaitInfo waitInfo{};
+        // waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
+        // waitInfo.semaphoreCount = 1;
+        // waitInfo.pSemaphores = signalSemaphores;
+        // vkwait
+        // vkWaitSemaphores(device, &waitInfo, 1000000);
+    }
+    else
+        VK_CHECK(result);
 
     currentFrame = (currentFrame + 1) % kNumberOfFramesInFlight; 
 }
@@ -3060,7 +3099,16 @@ void ParticleSystemApplication::mainLoop()
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
+        if (framebufferResized)
+        {
+            framebufferResized = false;
+            recreateSwapChain();
+        }
         updateParticles();
+
+        if (frameBufferResizeRequested)
+            recreateSwapChain();
+
         drawFrame();
     }
     VK_CHECK(vkDeviceWaitIdle(device));
@@ -3139,14 +3187,6 @@ void ParticleSystemApplication::cleanup()
     vkDestroyPipeline(device, particleUpdatePipeline, nullptr);
     vkDestroyPipelineLayout(device, particleUpdatePipelineLayout, nullptr);
     // vkDestroyRenderPass(device, renderPass, nullptr);
-
-    vkDestroyImageView(device, depthImageView, nullptr);
-    vkDestroyImage(device, depthImage, nullptr);
-    vkFreeMemory(device, depthImageMemory, nullptr);
-
-    vkDestroyImageView(device, colorImageView, nullptr);
-    vkDestroyImage(device, colorImage, nullptr);
-    vkFreeMemory(device, colorImageMemory, nullptr);
 
     vkDestroyDevice(device, nullptr);
     

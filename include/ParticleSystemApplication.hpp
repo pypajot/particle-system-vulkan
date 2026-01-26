@@ -72,6 +72,8 @@ class ParticleSystemApplication
 
         const uint kNumberOfFramesInFlight = 2;
 
+        bool frameBufferResizeRequested = false;
+
         GLFWwindow *window;
         VkInstance instance;
         VkDebugUtilsMessengerEXT debugMessenger;

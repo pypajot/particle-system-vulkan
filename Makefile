@@ -1,7 +1,7 @@
 NAME := particle-engine
 CC := g++
 LDFLAGS := -lglfw -lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi
-CPPFLAGS := -Wall -Wextra -Werror -MMD --std c++17 -DNDEBUG
+CPPFLAGS := -Wall -Wextra  -MMD --std c++17 -DNDEBUG
 
 OBJDIR := obj
 SRCDIR := src
@@ -31,6 +31,10 @@ SHADERSRCS := triangle/shader.vert \
 			  shadows/model.vert \
 			  shadows/particle.vert \
 			  shadows/shader.frag
+
+# SHADERSRCS := test.vert \
+# 				test.frag \
+# 				test.comp
 
 SHADERSPV := $(patsubst %,$(SHADERDIR)/%.spv, $(strip $(SHADERSRCS)))
 
