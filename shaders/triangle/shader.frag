@@ -8,7 +8,6 @@ layout(binding = 2) uniform sceneData
 } scene;
 
 layout(binding = 3) uniform sampler2D texSampler;
-// layout(binding = 4) uniform sampler2D texBumpSampler;
 layout(binding = 4) uniform sampler2D shadowSampler;
 
 layout(location = 0) in vec3 fragNormal;
@@ -25,9 +24,6 @@ float computeShadow(float angle)
 
     float closestDepth;
     float currentDepth = fragShadowTexCoord.z; 
-    // vec3 bump = texture(texBumpSampler, fragTexCoord).rgb;
-    // vec3 bumpNorm = fragNormal + bump.xyz;
-    // bumpNorm = normalize(bumpNorm);
 
     float shadow = 0.0;
 
@@ -53,16 +49,9 @@ void main()
     float angle = dot(normalize(scene.sunlightDirection).xyz, fragNormal);
     if (angle < 0.0f)
         angle = 0.0f;
-
     float diffuse = angle;
     float shadow = computeShadow(angle);
-    
-
-
-    // lightIntensity = 1.0f;
-
     float lightIntensity = angle * (1 - shadow) + scene.ambientLight.x;
     outColor = texture(texSampler, fragTexCoord) * scene.sunlightColor * lightIntensity;
-    // outColor = vec4(closestDepth, currentDepth, 0.0f, 1.0f);
 }
 

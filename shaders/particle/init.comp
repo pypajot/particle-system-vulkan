@@ -9,12 +9,12 @@ struct Particle
     vec4 color;
 };
 
-layout (std140, binding = 2) buffer ParticleSSBOOut
+layout (std140, binding = 1) buffer ParticleSSBOOut
 {
     Particle particlesOut[];
 };
 
-layout(binding = 3) uniform sampler2D ringSampler;
+layout(binding = 2) uniform sampler2D ringSampler;
 
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
@@ -27,20 +27,10 @@ void main()
 
     angle *= 2 * PI;
 
-    // float intensity = fract(sin(dist * dist * 10000));
-    // if (intensity > 0.2f && intensity < 0.5f)
-    //     intensity = 0.2f;
-    // if (intensity < 0.8f && intensity >= 0.5f)
-    //     intensity = 0.8f; 
-
     particlesOut[index].color = texture(ringSampler, vec2(dist, 0.5));
     dist = dist * 2.5f + 2.5f;
 
     particlesOut[index].position.xyz = vec3(dist * cos(angle), 0, dist * sin(angle));
     float speed = 1 / sqrt(dist);
     particlesOut[index].velocity.xyz = vec3(speed * sin(angle), 0.0f, speed * -cos(angle));
-
-    // particlesOut[index].position.xyz = vec3(1.0f, 1.0f, 1.0f);
-    // particlesOut[index].velocity.xyz = vec3(0.0f, 0.0f, 0.0f);
-    // particlesOut[index].color = vec4(vec3(1.0f, 1.0f, 1.0f), 1.0f);
 }

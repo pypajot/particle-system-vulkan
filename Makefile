@@ -7,14 +7,15 @@ OBJDIR := obj
 SRCDIR := src
 
 SRCS := main.cpp \
-		ParticleSystemApplication.cpp
-# 		Shader.cpp \
-# 		Camera.cpp \
-# 		FPSCounter.cpp \
-# 		Engine/AEngine.cpp \
-# 		Engine/EngineStatic.cpp \
-# 		Engine/EngineGen.cpp \
-# 		glad/gl.cpp
+		ComputePipeline.cpp \
+		Moon.cpp \
+		ParticleSystem.cpp \
+		ParticleSystemApplication.cpp \
+		ParticleSystemUtils.cpp \
+		RenderingPipeline.cpp \
+		ShadowmapPipeline.cpp \
+		Swapchain.cpp \
+		Window.cpp
 
 
 OBJS := $(patsubst %.cpp,$(OBJDIR)/%.o, $(strip $(SRCS)))

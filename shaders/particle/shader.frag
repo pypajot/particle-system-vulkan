@@ -35,21 +35,11 @@ float computeShadow()
         }
     }
     shadow /= 4.0;
-    // if (currentDepth - closestDepth > bias)
-    //             shadow += 1.0;
     return shadow;
 }
 
 void main()
 {
-    // vec3 bump = texture(texBumpSampler, fragTexCoord).rgb;
-    // vec3 bumpNorm = fragNormal + bump.xyz;
-    // bumpNorm = normalize(bumpNorm);
-    // float lightIntensity = dot(scene.sunlightDirection.xyz, fragNormal);
-    // if (lightIntensity < 0.0f)
-    //     lightIntensity = 0.0f;
-    // lightIntensity += scene.ambientLight.x;
     outColor = inColor * ((1.0 - computeShadow()) + scene.ambientLight);
-    // outColor = vec4(closestDepth, currentDepth, 0.0f, 1.0f);
 }
 
