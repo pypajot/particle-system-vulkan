@@ -2,6 +2,7 @@
 
 #include "ParticleSystemApplication.hpp"
 #include "ParticleSystemPipelines.hpp"
+#include "ParticleSystemUtils.hpp"
 #include "Particle.hpp"
 #include "Vertex.hpp"
 
