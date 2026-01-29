@@ -3,10 +3,13 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 
+class ParticleSystemApplication;
 
 class ParticleSystemDescriptorSets
 {
     private:
+        ParticleSystemApplication *parentApp;
+
         VkDescriptorPool descriptorPool;
 
         VkDescriptorSetLayout renderDescriptorSetLayout;
@@ -15,8 +18,6 @@ class ParticleSystemDescriptorSets
         VkDescriptorSetLayout computeDescriptorSetLayout;
         std::vector<VkDescriptorSet> computeDescriptorSets;
         
-        VkDescriptorSetLayout particleInitDescriptorSetLayout;
-
         VkDescriptorSetLayout shadowMapDescriptorSetLayout;
         std::vector<VkDescriptorSet> shadowMapDescriptorSets;
 
@@ -33,4 +34,5 @@ class ParticleSystemDescriptorSets
         void createDescriptorSetLayout(VkDevice device);
         void createComputeDescriptorSetLayout(VkDevice device);
         void createShadowMapDescriptorSetLayout(VkDevice device);
+        void cleanup();
 };

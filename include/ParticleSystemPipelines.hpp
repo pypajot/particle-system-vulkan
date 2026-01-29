@@ -3,10 +3,12 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 
+class ParticleSystemApplication;
+
 class ParticleSystemPipelines
 {
     private:
-        VkDevice device;
+        ParticleSystemApplication *parentApp;
 
         VkPipelineLayout shadowMapModelPipelineLayout;
         VkPipeline shadowMapModelPipeline;
@@ -41,6 +43,7 @@ class ParticleSystemPipelines
         void createParticleGraphicsPipeline();
         void createParticleInitPipeline();
         void createParticleUpdatePipeline();
+        void cleanup();
 
 
 };

@@ -16,6 +16,7 @@ ParticleSystemImages::ParticleSystemImages() {}
 ParticleSystemImages::~ParticleSystemImages() {}
 
 
+
 void ParticleSystemImages::createColorResources()
 {
     VkFormat colorFormat = swapChainImageFormat;
@@ -26,14 +27,14 @@ void ParticleSystemImages::createColorResources()
 
 void ParticleSystemImages::createDepthResources()
 {
-    VkFormat depthFormat = findDepthFormat();
+    VkFormat depthFormat = findDepthFormat(physicalDevice);
     createImage(device, memProperties, swapChainExtent.width, swapChainExtent.height, msaaSamples, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
     depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 void ParticleSystemImages::createDepthMap()
 {
-    VkFormat depthFormat = findDepthFormat();
+    VkFormat depthFormat = findDepthFormat(physicalDevice);
     createImage
     (
         device,
@@ -117,7 +118,7 @@ void ParticleSystemImages::createTextureImage(VkCommandBuffer commandBuffer)
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         VK_IMAGE_ASPECT_COLOR_BIT
     );
-    endSingleTimeCommands(device, commandBuffer, graphicsAndComputeQueue);
+    endSingleTimeCommands(device, commandBuffer, graphicsQueue, commandPool);
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
@@ -251,7 +252,7 @@ void ParticleSystemImages::createBumpImage(VkCommandBuffer commandBuffer)
         VK_IMAGE_ASPECT_COLOR_BIT
     );
 
-    endSingleTimeCommands(device, commandBuffer, graphicsAndComputeQueue);
+    endSingleTimeCommands(device, commandBuffer, graphicsQueue, commandPool);
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
@@ -259,4 +260,30 @@ void ParticleSystemImages::createBumpImage(VkCommandBuffer commandBuffer)
 void ParticleSystemImages::createBumpImageView()
 {
     bumpImageView = createImageView(device, bumpImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+}
+
+void ParticleSystemImages::cleanup()
+{
+    vkDestroyImage(device, colorImage, nullptr);
+    vkFreeMemory(device, colorImageMemory, nullptr);
+    vkDestroyImageView(device, colorImageView, nullptr);
+
+    vkDestroyImage(device, depthImage, nullptr);
+    vkFreeMemory(device, depthImageMemory, nullptr);
+    vkDestroyImageView(device, depthImageView, nullptr);
+
+    vkDestroyImage(device, textureImage, nullptr);
+    vkFreeMemory(device, textureImageMemory, nullptr);
+    vkDestroyImageView(device, textureImageView, nullptr);
+
+    vkDestroyImage(device, depthMap, nullptr);
+    vkFreeMemory(device, depthMapMemory, nullptr);
+    vkDestroyImageView(device, depthMapView, nullptr);
+
+    vkDestroyImage(device, bumpImage, nullptr);
+    vkFreeMemory(device, bumpImageMemory, nullptr);
+    vkDestroyImageView(device, bumpImageView, nullptr);
+
+    vkDestroySampler(device, textureSampler, nullptr);
+    vkDestroySampler(device, shadowMapTextureSampler, nullptr);
 }

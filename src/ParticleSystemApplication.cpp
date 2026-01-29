@@ -9,7 +9,6 @@
 #include <limits>
 #include <algorithm>
 #include <fstream>
-#include <glm/gtc/matrix_transform.hpp>
 
 #ifndef STB_IMAGE_IMPLEMENTATION
     #define STB_IMAGE_IMPLEMENTATION
@@ -353,286 +352,81 @@ void ParticleSystemApplication::createSwapChain()
     swapChainExtent = extent;
 }
 
-void ParticleSystemApplication::createImage
-(
-    uint32_t width,
-    uint32_t height,
-    VkSampleCountFlagBits numSamples,
-    VkFormat format,
-    VkImageTiling tiling,
-    VkImageUsageFlags usage, 
-    VkMemoryPropertyFlags properties,
-    VkImage& image,
-    VkDeviceMemory& imageMemory
-)
-{
-    VkImageCreateInfo imageInfo{};
-    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageInfo.extent.width = width;
-    imageInfo.extent.height = height;
-    imageInfo.extent.depth = 1;
-    imageInfo.mipLevels = 1;
-    imageInfo.arrayLayers = 1;
-    imageInfo.format = format;
-    imageInfo.tiling = tiling;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageInfo.usage = usage;
-    imageInfo.samples = numSamples;
-    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+// void ParticleSystemApplication::createImage
+// (
+//     uint32_t width,
+//     uint32_t height,
+//     VkSampleCountFlagBits numSamples,
+//     VkFormat format,
+//     VkImageTiling tiling,
+//     VkImageUsageFlags usage, 
+//     VkMemoryPropertyFlags properties,
+//     VkImage& image,
+//     VkDeviceMemory& imageMemory
+// )
+// {
+//     VkImageCreateInfo imageInfo{};
+//     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+//     imageInfo.imageType = VK_IMAGE_TYPE_2D;
+//     imageInfo.extent.width = width;
+//     imageInfo.extent.height = height;
+//     imageInfo.extent.depth = 1;
+//     imageInfo.mipLevels = 1;
+//     imageInfo.arrayLayers = 1;
+//     imageInfo.format = format;
+//     imageInfo.tiling = tiling;
+//     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+//     imageInfo.usage = usage;
+//     imageInfo.samples = numSamples;
+//     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    VK_CHECK(vkCreateImage(device, &imageInfo, nullptr, &image));
+//     VK_CHECK(vkCreateImage(device, &imageInfo, nullptr, &image));
 
-    VkMemoryRequirements memRequirements;
-    vkGetImageMemoryRequirements(device, image, &memRequirements);
+//     VkMemoryRequirements memRequirements;
+//     vkGetImageMemoryRequirements(device, image, &memRequirements);
 
-    VkMemoryAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+//     VkMemoryAllocateInfo allocInfo{};
+//     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+//     allocInfo.allocationSize = memRequirements.size;
+//     allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
 
-    VK_CHECK(vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory));
-    VK_CHECK(vkBindImageMemory(device, image, imageMemory, 0));
-}
+//     VK_CHECK(vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory));
+//     VK_CHECK(vkBindImageMemory(device, image, imageMemory, 0));
+// }
 
-void ParticleSystemApplication::createImageViews()
+void ParticleSystemApplication::createSwapChainImageViews()
 {
     swapChainImageViews.resize(swapChainImages.size());
     for (uint i = 0; i < swapChainImageViews.size(); i++)
     {
-        swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+        swapChainImageViews[i] = createImageView(device, swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
     }
 }
 
-void ParticleSystemApplication::copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
-{
-    VkBufferImageCopy region{};
-    region.bufferOffset = 0;
-    region.bufferRowLength = 0;
-    region.bufferImageHeight = 0;
-
-    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    region.imageSubresource.mipLevel = 0;
-    region.imageSubresource.baseArrayLayer = 0;
-    region.imageSubresource.layerCount = 1;
-
-    region.imageOffset = {0, 0, 0};
-    region.imageExtent = {width, height, 1};
-
-    vkCmdCopyBufferToImage
-    (
-        commandBuffer,
-        buffer,
-        image,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        1,
-        &region
-    );
-}
-
-// void ParticleSystemApplication::createTextureImage(VkCommandBuffer commandBuffer)
+// void ParticleSystemApplication::copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
 // {
-//     int texWidth, texHeight, texChannels;
+//     VkBufferImageCopy region{};
+//     region.bufferOffset = 0;
+//     region.bufferRowLength = 0;
+//     region.bufferImageHeight = 0;
 
-//     stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-//     VkDeviceSize imageSize = texWidth * texHeight * 4;
+//     region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+//     region.imageSubresource.mipLevel = 0;
+//     region.imageSubresource.baseArrayLayer = 0;
+//     region.imageSubresource.layerCount = 1;
 
-//     if (!pixels)
-//         throw std::runtime_error("failed to load texture image!");
+//     region.imageOffset = {0, 0, 0};
+//     region.imageExtent = {width, height, 1};
 
-//     VkBuffer stagingBuffer;
-//     VkDeviceMemory stagingBufferMemory;
-    
-//     createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, stagingBuffer, stagingBufferMemory);
-
-//     void* data;
-//     VK_CHECK(vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data));
-//     memcpy(data, pixels, static_cast<size_t>(imageSize));
-//     vkUnmapMemory(device, stagingBufferMemory);
-    
-//     stbi_image_free(pixels);
-
-//     createImage
-//     (
-//         texWidth,
-//         texHeight,
-//         VK_SAMPLE_COUNT_1_BIT,
-//         VK_FORMAT_R8G8B8A8_SRGB,
-//         VK_IMAGE_TILING_OPTIMAL,
-//         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-//         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-//         textureImage,
-//         textureImageMemory
-//     );
-
-//     transition_image_layout
+//     vkCmdCopyBufferToImage
 //     (
 //         commandBuffer,
-//         textureImage,
-//         VK_IMAGE_LAYOUT_UNDEFINED,
+//         buffer,
+//         image,
 //         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-//         0,
-//         VK_ACCESS_TRANSFER_WRITE_BIT,
-//         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-//         VK_PIPELINE_STAGE_TRANSFER_BIT,
-//         VK_IMAGE_ASPECT_COLOR_BIT
+//         1,
+//         &region
 //     );
-//     // transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-//     copyBufferToImage(commandBuffer, stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-//     // transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-//     transition_image_layout
-//     (
-//         commandBuffer,
-//         textureImage,
-//         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-//         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-//         VK_ACCESS_TRANSFER_WRITE_BIT,
-//         VK_ACCESS_SHADER_READ_BIT,
-//         VK_PIPELINE_STAGE_TRANSFER_BIT,
-//         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-//         VK_IMAGE_ASPECT_COLOR_BIT
-//     );
-//     endSingleTimeCommands(commandBuffer, graphicsAndComputeQueue);
-//     vkDestroyBuffer(device, stagingBuffer, nullptr);
-//     vkFreeMemory(device, stagingBufferMemory, nullptr);
-// }
-
-// void ParticleSystemApplication::createTextureImageView()
-// {
-//     textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-// }
-
-// void ParticleSystemApplication::createTextureSampler()
-// {
-//     VkSamplerCreateInfo samplerInfo{};
-//     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-//     samplerInfo.magFilter = VK_FILTER_LINEAR;
-//     samplerInfo.minFilter = VK_FILTER_LINEAR;
-//     samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-//     samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-//     samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-
-//     VkPhysicalDeviceProperties properties{};
-//     vkGetPhysicalDeviceProperties(physicalDevice, &properties);
-
-//     samplerInfo.anisotropyEnable = VK_TRUE;
-//     samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-//     samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-
-//     samplerInfo.unnormalizedCoordinates = VK_FALSE;
-
-//     samplerInfo.compareEnable = VK_FALSE;
-//     samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-
-//     samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-//     samplerInfo.mipLodBias = 0.0f;
-//     samplerInfo.minLod = 0.0f;
-//     samplerInfo.maxLod = 0.0f;
-
-//     VK_CHECK(vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler));
-// }
-
-// void ParticleSystemApplication::createShadowMapTextureSampler()
-// {
-//     VkSamplerCreateInfo samplerInfo{};
-//     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-//     samplerInfo.magFilter = VK_FILTER_LINEAR;
-//     samplerInfo.minFilter = VK_FILTER_LINEAR;
-//     samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-//     samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-//     samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-//     samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-
-//     VkPhysicalDeviceProperties properties{};
-//     vkGetPhysicalDeviceProperties(physicalDevice, &properties);
-
-//     samplerInfo.anisotropyEnable = VK_TRUE;
-//     samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-//     // samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-
-//     samplerInfo.unnormalizedCoordinates = VK_FALSE;
-
-//     samplerInfo.compareEnable = VK_FALSE;
-//     samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-
-//     samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-//     samplerInfo.mipLodBias = 0.0f;
-//     samplerInfo.minLod = 0.0f;
-//     samplerInfo.maxLod = 0.0f;
-
-//     VK_CHECK(vkCreateSampler(device, &samplerInfo, nullptr, &shadowMapTextureSampler));
-// }
-
-// void ParticleSystemApplication::createBumpImage(VkCommandBuffer commandBuffer)
-// {
-//     int texWidth, texHeight, texChannels;
-
-//     stbi_uc* pixels = stbi_load(RING_TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-//     VkDeviceSize imageSize = texWidth * texHeight * 4;
-
-//     if (!pixels)
-//         throw std::runtime_error("failed to load bump image!");
-
-//     VkBuffer stagingBuffer;
-//     VkDeviceMemory stagingBufferMemory;
-    
-//     createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, stagingBuffer, stagingBufferMemory);
-
-//     void* data;
-//     VK_CHECK(vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data));
-//     memcpy(data, pixels, static_cast<size_t>(imageSize));
-//     vkUnmapMemory(device, stagingBufferMemory);
-    
-//     stbi_image_free(pixels);
-
-//     createImage
-//     (
-//         texWidth,
-//         texHeight,
-//         VK_SAMPLE_COUNT_1_BIT,
-//         VK_FORMAT_R8G8B8A8_SRGB,
-//         VK_IMAGE_TILING_OPTIMAL,
-//         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-//         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-//         bumpImage,
-//         bumpImageMemory
-//     );
-
-//     transition_image_layout
-//     (
-//         commandBuffer,
-//         bumpImage,
-//         VK_IMAGE_LAYOUT_UNDEFINED,
-//         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-//         0,
-//         VK_ACCESS_TRANSFER_WRITE_BIT,
-//         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-//         VK_PIPELINE_STAGE_TRANSFER_BIT,
-//         VK_IMAGE_ASPECT_COLOR_BIT
-//     );
-//     copyBufferToImage(commandBuffer, stagingBuffer, bumpImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-//     transition_image_layout
-//     (
-//         commandBuffer,
-//         bumpImage,
-//         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-//         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-//         VK_ACCESS_TRANSFER_WRITE_BIT,
-//         VK_ACCESS_SHADER_READ_BIT,
-//         VK_PIPELINE_STAGE_TRANSFER_BIT,
-//         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-//         VK_IMAGE_ASPECT_COLOR_BIT
-//     );
-
-//     endSingleTimeCommands(commandBuffer, graphicsAndComputeQueue);
-//     vkDestroyBuffer(device, stagingBuffer, nullptr);
-//     vkFreeMemory(device, stagingBufferMemory, nullptr);
-// }
-
-// void ParticleSystemApplication::createBumpImageView()
-// {
-//     bumpImageView = createImageView(bumpImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 // }
 
 VkSampleCountFlagBits ParticleSystemApplication::getMaxUsableSampleCount()
@@ -1092,140 +886,16 @@ void ParticleSystemApplication::initVulkan()
     pickPhysicalDevice();
     createLogicalDevice();
     createSwapChain();
-    createImageViews();
-
+    createSwapChainImageViews();
     createCommandPool();
-    createColorResources();
-    createDepthResources();  
-
-    loadModel();
-
-    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-    createVertexBuffer(commandBuffer);  
-    commandBuffer = beginSingleTimeCommands();
-    createIndexBuffer(commandBuffer);
-
-    createStorageBuffers();
-    createUniformBuffers();  
-    createSceneDataBuffers();
-    createShadowMapUniformBuffers();
-
-    commandBuffer = beginSingleTimeCommands();
-    createTextureImage(commandBuffer);
-    createTextureImageView();
-    createTextureSampler();
-    createShadowMapTextureSampler();
-
-    commandBuffer = beginSingleTimeCommands();
-    createBumpImage(commandBuffer);
-    createBumpImageView();
-
-    createDepthMap();
-    // createBumpSampler();
-    createDescriptorPool();
-    createDescriptorSets();
-
     createCommandBuffer();
     createSyncObjects();
-}
-
-void ParticleSystemApplication::updateUniformBuffer(uint32_t currentImage)
-{
-    float time = glfwGetTime() / 4;
-    UniformBufferObject ubo{};
-    ubo.model = glm::rotate(glm::mat4(1.0f), time, glm::vec3(0, 1, 0));
-    ubo.model = glm::mat4(1.0f);
-    ubo.view = glm::lookAt(glm::vec3(5.0f, -10.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f));
-    ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 100.0f);
-    // ubo.view = glm::lookAt(glm::vec3(10.0f, -2.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-    // ubo.proj = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, -20.0f, 20.0f);
-    ubo.proj[1][1] *= -1;
-    ubo.projViewModel = ubo.proj * ubo.view * ubo.model;
-
-    memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
-
-    SceneData scene{};
-    scene.ambientLight = glm::vec4(0.1f);
-    scene.sunlightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    scene.sunlightDirection = glm::vec4(10.0f, 2.0f, 0.0f, 1.0f);
-
-    memcpy(sceneDataBuffersMapped[currentImage], &scene, sizeof(scene));
-
-    ubo.model = glm::mat4(1.0f);
-    ubo.view = glm::lookAt(glm::vec3(10.0f, 2.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-    ubo.proj = glm::ortho(-7.0f, 7.0f, 7.0f, -7.0f, 0.0f, 20.0f);
-    // ubo.proj[1][1] *= -1;
-    
-    ubo.projViewModel = ubo.proj * ubo.view * ubo.model;
-
-    memcpy(shadowMapUniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
-}
-
-
-
-VkFormat ParticleSystemApplication::findSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
-{
-    for (VkFormat format : candidates)
-    {
-        VkFormatProperties props;
-        vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
-
-        if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
-            return format;
-        else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
-            return format;
-    }
-    throw std::runtime_error("Failed to find supported format.");
 }
 
 bool ParticleSystemApplication::hasStencilComponent(VkFormat format)
 {
     return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
-
-VkFormat ParticleSystemApplication::findDepthFormat()
-{
-    return findSupportedFormat
-    (
-        {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
-        VK_IMAGE_TILING_OPTIMAL,
-        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
-    );
-}
-
-// void ParticleSystemApplication::createColorResources()
-// {
-//     VkFormat colorFormat = swapChainImageFormat;
-
-//     createImage(swapChainExtent.width, swapChainExtent.height, msaaSamples, colorFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, colorImage, colorImageMemory);
-//     colorImageView = createImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
-// }
-
-// void ParticleSystemApplication::createDepthResources()
-// {
-//     VkFormat depthFormat = findDepthFormat();
-//     createImage(swapChainExtent.width, swapChainExtent.height, msaaSamples, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
-//     depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-// }
-
-// void ParticleSystemApplication::createDepthMap()
-// {
-//     VkFormat depthFormat = findDepthFormat();
-//     createImage
-//     (
-//         SHADOW_MAP_WIDTH,
-//         SHADOW_MAP_HEIGHT,
-//         VK_SAMPLE_COUNT_1_BIT,
-//         depthFormat,
-//         VK_IMAGE_TILING_OPTIMAL,
-//         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-//         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-//         depthMap,
-//         depthMapMemory
-//     );
-//     depthMapView = createImageView(depthMap, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-//     // transitionImageLayout(depthMap, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-// }
 
 void ParticleSystemApplication::updateParticles()
 {
@@ -1299,10 +969,8 @@ void ParticleSystemApplication::drawFrame()
 
     updateUniformBuffer(currentFrame);
 
-
     VK_CHECK(vkResetCommandBuffer(commandBuffer[currentFrame], 0));
     recordCommandBuffer(commandBuffer[currentFrame], imageIndex);
-
 
     VkSubmitInfo submitInfo = {};
 
@@ -1360,30 +1028,6 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 
 void ParticleSystemApplication::cleanup()
 {
-    vkDestroyBuffer(device, indexBuffer, nullptr);
-    vkFreeMemory(device, indexBufferMemory, nullptr);
-
-    vkDestroyBuffer(device, vertexBuffer, nullptr);
-    vkFreeMemory(device, vertexBufferMemory, nullptr);
-
-    vkDestroySampler(device, textureSampler, nullptr);
-    vkDestroyImageView(device, textureImageView, nullptr);
-    vkDestroyImage(device, textureImage, nullptr);
-    vkFreeMemory(device, textureImageMemory, nullptr);
-
-    vkDestroyImageView(device, bumpImageView, nullptr);
-    vkDestroyImage(device, bumpImage, nullptr);
-    vkFreeMemory(device, bumpImageMemory, nullptr);
-
-    for (uint i = 0; i < NUMBER_OF_FRAMES_IN_FLIGHT; i++)
-    {
-        vkDestroyBuffer(device, shaderStorageBuffers[i], nullptr);
-        vkFreeMemory(device, shaderStorageBuffersMemory[i], nullptr);
-
-        vkDestroyBuffer(device, sceneDataBuffers[i], nullptr);
-        vkFreeMemory(device, sceneDataBuffersMemory[i], nullptr);
-    }
-
     for (uint i = 0; i < NUMBER_OF_FRAMES_IN_FLIGHT; i++)
     {
         vkDestroySemaphore(device, imageAvailableSemaphore[i], nullptr);
@@ -1398,36 +1042,6 @@ void ParticleSystemApplication::cleanup()
     }
     
     vkDestroyCommandPool(device, commandPool, nullptr);
-
-    // for (auto framebuffer : swapChainFramebuffers)
-    //     vkDestroyFramebuffer(device, framebuffer, nullptr);
-
-    for (size_t i = 0; i < NUMBER_OF_FRAMES_IN_FLIGHT; i++)
-    {
-        vkDestroyBuffer(device, uniformBuffers[i], nullptr);
-        vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
-    }
-
-    vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-    vkDestroyDescriptorSetLayout(device, particleInitDescriptorSetLayout, nullptr);
-    vkDestroyPipeline(device, graphicsPipeline, nullptr);
-    vkDestroyPipelineLayout(device, graphicsPipelineLayout, nullptr);
-    vkDestroyPipeline(device, particleGraphicsPipeline, nullptr);
-    vkDestroyPipelineLayout(device, particleGraphicsPipelineLayout, nullptr);
-    vkDestroyPipeline(device, particleInitPipeline, nullptr);
-    vkDestroyPipelineLayout(device, particleInitPipelineLayout, nullptr);
-    vkDestroyPipeline(device, particleUpdatePipeline, nullptr);
-    vkDestroyPipelineLayout(device, particleUpdatePipelineLayout, nullptr);
-    // vkDestroyRenderPass(device, renderPass, nullptr);
-
-    vkDestroyImageView(device, depthImageView, nullptr);
-    vkDestroyImage(device, depthImage, nullptr);
-    vkFreeMemory(device, depthImageMemory, nullptr);
-
-    vkDestroyImageView(device, colorImageView, nullptr);
-    vkDestroyImage(device, colorImage, nullptr);
-    vkFreeMemory(device, colorImageMemory, nullptr);
 
     for (auto imageView : swapChainImageViews)
         vkDestroyImageView(device, imageView, nullptr);

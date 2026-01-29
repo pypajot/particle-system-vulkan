@@ -1,5 +1,6 @@
 #include <vector>
 #include <tiny_obj_loader.h>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "ParticleSystemUtils.hpp"
 #include "ParticleSystemApplication.hpp"
@@ -8,15 +9,12 @@
 
 ParticleSystemBuffers::ParticleSystemBuffers() {}
 
-ParticleSystemBuffers::~ParticleSystemBuffers() {}
-
-void ParticleSystemBuffers::appInfo(VkDevice appDevice, VkPhysicalDeviceMemoryProperties appMemProperties, VkCommandPool appCommandPool, VkQueue appGraphicsQueue)
+ParticleSystemBuffers::ParticleSystemBuffers(ParticleSystemApplication *app)
 {
-    device = appDevice;
-    memProperties = appMemProperties;
-    commandPool = appCommandPool;
-    graphicsQueue = appGraphicsQueue;
+    parentApp = app;
 }
+
+ParticleSystemBuffers::~ParticleSystemBuffers() {}
 
 void ParticleSystemBuffers::loadModel()
 {
@@ -65,29 +63,6 @@ void ParticleSystemBuffers::loadModel()
             indices.push_back(uniqueVertices[vertex]);
         }
     }
-}
-
-void ParticleSystemBuffers::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
-{
-    VkBufferCreateInfo bufferInfo{};
-    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferInfo.size = size;
-    bufferInfo.usage = usage;
-    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    VK_CHECK(vkCreateBuffer(device, &bufferInfo, nullptr, &buffer));
-
-    VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
-
-    VkMemoryAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = findMemoryType(memProperties, memRequirements.memoryTypeBits, properties);
-
-    VK_CHECK(vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory));
-
-    VK_CHECK(vkBindBufferMemory(device, buffer, bufferMemory, 0));
 }
 
 void ParticleSystemBuffers::copyBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
@@ -199,5 +174,61 @@ void ParticleSystemBuffers::createShadowMapUniformBuffers()
     {
         createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, shadowMapUniformBuffers[i], shadowMapUniformBuffersMemory[i]);
         VK_CHECK(vkMapMemory(device, shadowMapUniformBuffersMemory[i], 0, bufferSize, 0, &shadowMapUniformBuffersMapped[i]));
+    }
+}
+
+void ParticleSystemBuffers::updateUniformBuffer(uint32_t currentImage)
+{
+    float time = glfwGetTime() / 4;
+    UniformBufferObject ubo{};
+    ubo.model = glm::rotate(glm::mat4(1.0f), time, glm::vec3(0, 1, 0));
+    ubo.model = glm::mat4(1.0f);
+    ubo.view = glm::lookAt(glm::vec3(5.0f, -10.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f));
+    ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 100.0f);
+    // ubo.view = glm::lookAt(glm::vec3(10.0f, -2.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+    // ubo.proj = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, -20.0f, 20.0f);
+    ubo.proj[1][1] *= -1;
+    ubo.projViewModel = ubo.proj * ubo.view * ubo.model;
+
+    memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+
+    SceneData scene{};
+    scene.ambientLight = glm::vec4(0.1f);
+    scene.sunlightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    scene.sunlightDirection = glm::vec4(10.0f, 2.0f, 0.0f, 1.0f);
+
+    memcpy(sceneDataBuffersMapped[currentImage], &scene, sizeof(scene));
+
+    ubo.model = glm::mat4(1.0f);
+    ubo.view = glm::lookAt(glm::vec3(10.0f, 2.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+    ubo.proj = glm::ortho(-7.0f, 7.0f, 7.0f, -7.0f, 0.0f, 20.0f);
+    // ubo.proj[1][1] *= -1;
+    
+    ubo.projViewModel = ubo.proj * ubo.view * ubo.model;
+
+    memcpy(shadowMapUniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+}
+
+void ParticleSystemBuffers::cleanup()
+{
+    vkDestroyBuffer(device, vertexBuffer, nullptr);
+    vkFreeMemory(device, vertexBufferMemory, nullptr);
+
+    vkDestroyBuffer(device, indexBuffer, nullptr);
+    vkFreeMemory(device, indexBufferMemory, nullptr);
+
+    for (uint i = 0; i < NUMBER_OF_FRAMES_IN_FLIGHT; i++)
+    {
+        vkDestroyBuffer(device, shaderStorageBuffers[i], nullptr);
+        vkFreeMemory(device, shaderStorageBuffersMemory[i], nullptr);
+
+        vkDestroyBuffer(device, uniformBuffers[i], nullptr);
+        vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+
+        vkDestroyBuffer(device, sceneDataBuffers[i], nullptr);
+        vkFreeMemory(device, sceneDataBuffersMemory[i], nullptr);
+
+        vkDestroyBuffer(device, shadowMapUniformBuffers[i], nullptr);
+        vkFreeMemory(device, shadowMapUniformBuffersMemory[i], nullptr);
     }
 }

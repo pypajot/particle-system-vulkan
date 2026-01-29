@@ -834,3 +834,24 @@ void ParticleSystemPipelines::createParticleUpdatePipeline()
     
     vkDestroyShaderModule(device, computeShaderModule, nullptr);
 }
+
+void ParticleSystemPipelines::cleanup()
+{
+    vkDestroyPipelineLayout(device, shadowMapModelPipelineLayout, nullptr);
+    vkDestroyPipeline(device, shadowMapModelPipeline, nullptr);
+
+    vkDestroyPipelineLayout(device, shadowMapParticlePipelineLayout, nullptr);
+    vkDestroyPipeline(device, shadowMapParticlePipeline, nullptr);
+
+    vkDestroyPipelineLayout(device, graphicsPipelineLayout, nullptr);
+    vkDestroyPipeline(device, graphicsPipeline, nullptr);
+
+    vkDestroyPipelineLayout(device, particleGraphicsPipelineLayout, nullptr);
+    vkDestroyPipeline(device, particleGraphicsPipeline, nullptr);
+
+    vkDestroyPipelineLayout(device, particleInitPipelineLayout, nullptr);
+    vkDestroyPipeline(device, particleInitPipeline, nullptr);
+
+    vkDestroyPipelineLayout(device, particleUpdatePipelineLayout, nullptr);
+    vkDestroyPipeline(device, particleUpdatePipeline, nullptr);
+}

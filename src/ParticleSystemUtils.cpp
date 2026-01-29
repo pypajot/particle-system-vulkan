@@ -141,6 +141,8 @@ VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkI
     return imageView;
 }
 
+
+
 VkCommandBuffer beginSingleTimeCommands(VkDevice device, VkCommandPool commandPool)
 {
     VkCommandBufferAllocateInfo allocInfo{};
@@ -189,6 +191,17 @@ VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<
             return format;
     }
     throw std::runtime_error("Failed to find supported format.");
+}
+
+VkFormat findDepthFormat(VkPhysicalDevice physicalDevice)
+{
+    return findSupportedFormat
+    (
+        physicalDevice,
+        {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+    );
 }
 
 void transition_image_layout

@@ -14,6 +14,8 @@
 #include "Vertex.hpp"
 #include "ParticleSystemDescriptorSets.hpp"
 #include "ParticleSystemPipelines.hpp"
+#include "ParticleSystemImages.hpp"
+#include "ParticleSystemBuffers.hpp"
 
 #define NUMBER_OF_FRAMES_IN_FLIGHT 2
 
@@ -70,9 +72,6 @@ class ParticleSystemApplication
         void run();
 
     private:
-        const std::string TEXTURE_PATH = "textures/moon_diffuse.png";
-        const std::string RING_TEXTURE_PATH = "textures/saturn_ring_texture.png";
-
         GLFWwindow *window;
         VkInstance instance;
         VkDebugUtilsMessengerEXT debugMessenger;
@@ -93,8 +92,9 @@ class ParticleSystemApplication
         VkExtent2D shadowMapExtent;
 
         ParticleSystemDescriptorSets descriptorSets;
-
         ParticleSystemPipelines pipelines;
+        ParticleSystemImages images;
+        ParticleSystemBuffers buffers;
 
         VkCommandPool commandPool;
         std::vector<VkCommandBuffer> commandBuffer;
@@ -106,50 +106,6 @@ class ParticleSystemApplication
 
         std::vector<VkSemaphore> computeFinishedSemaphore;
         std::vector<VkFence> computeInFlightFences;
-
-        // VkBuffer vertexBuffer;
-        // VkDeviceMemory vertexBufferMemory;
-
-        // VkBuffer indexBuffer;
-        // VkDeviceMemory indexBufferMemory;
-
-        // std::vector<VkBuffer> shaderStorageBuffers;
-        // std::vector<VkDeviceMemory> shaderStorageBuffersMemory;
-
-        // std::vector<VkBuffer> uniformBuffers;
-        // std::vector<VkDeviceMemory> uniformBuffersMemory;
-        // std::vector<void*> uniformBuffersMapped;
-
-        // std::vector<VkBuffer> sceneDataBuffers;
-        // std::vector<VkDeviceMemory> sceneDataBuffersMemory;
-        // std::vector<void*> sceneDataBuffersMapped;
-
-        // std::vector<VkBuffer> shadowMapUniformBuffers;
-        // std::vector<VkDeviceMemory> shadowMapUniformBuffersMemory;
-        // std::vector<void*> shadowMapUniformBuffersMapped;
-
-        // VkImage colorImage;
-        // VkDeviceMemory colorImageMemory;
-        // VkImageView colorImageView;
-
-        // VkImage depthImage;
-        // VkDeviceMemory depthImageMemory;
-        // VkImageView depthImageView;
-
-        // VkImage textureImage;
-        // VkDeviceMemory textureImageMemory;
-        // VkImageView textureImageView;
-
-        // VkImage depthMap;
-        // VkDeviceMemory depthMapMemory;
-        // VkImageView depthMapView;
-
-        // VkSampler textureSampler;
-        // VkSampler shadowMapTextureSampler;
-
-        // VkImage bumpImage;
-        // VkDeviceMemory bumpImageMemory;
-        // VkImageView bumpImageView;
 
         uint32_t currentFrame = 0;
 
@@ -194,26 +150,13 @@ class ParticleSystemApplication
 
         QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
 
-        void transition_image_layout
-        (
-            VkCommandBuffer commandBuffer,
-            VkImage targetImage,
-            VkImageLayout oldLayout,
-            VkImageLayout newLayout,
-            VkAccessFlags2 srcAccessMask,
-            VkAccessFlags2 dstAccessMask,
-            VkPipelineStageFlags2 srcStageMask,
-            VkPipelineStageFlags2 dstStageMask,
-            uint imageAspectFlags
-        );
-
         void createInstance();
         void setupDebugMessenger();
         void pickPhysicalDevice();
         void createLogicalDevice();
         void createSurface();
         void createSwapChain();
-        void createImageViews();
+        void createSwapChainImageViews();
 
         void createCommandPool();
         void createCommandBuffer();
@@ -221,31 +164,9 @@ class ParticleSystemApplication
         void recordShadowMapRendering(VkCommandBuffer commandBuffer);
         void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
-        void updateUniformBuffer(uint32_t currentImage);
-
-        // void createColorResources();
-        // void createDepthResources();
-        // VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
-        VkFormat findDepthFormat();
         bool hasStencilComponent(VkFormat format);
 
         uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
-
-        void createImage(uint32_t width, uint32_t height, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
-        VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
-
-        // void createTextureSampler();
-        // void createShadowMapTextureSampler();
-
-        // void createTextureImage(VkCommandBuffer commandBuffer);
-        // void createTextureImageView();
-        
-        // void createBumpImage(VkCommandBuffer commandBuffer);
-        // void createBumpImageView();
-
-        // void createDepthMap();
-        
-        void copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
         void recordComputeCommandBuffer(VkCommandBuffer commandBuffer, VkPipeline computePipeline, VkPipelineLayout computePipelineLayout);
 
@@ -254,11 +175,6 @@ class ParticleSystemApplication
         void drawFrame();
 
         void createSyncObjects();
-
-        VkCommandBuffer beginSingleTimeCommands();
-        void endSingleTimeCommands(VkCommandBuffer commandBuffer, VkQueue submitQueue);
-
-        VkShaderModule createShaderModule(const std::vector<char>& code);
 
         VkSampleCountFlagBits getMaxUsableSampleCount();
 

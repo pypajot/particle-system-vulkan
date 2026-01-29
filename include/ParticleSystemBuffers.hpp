@@ -5,18 +5,21 @@
 
 #include "Vertex.hpp"
 
+class ParticleSystemApplication;
+
 class ParticleSystemBuffers
 {
     public:
         ParticleSystemBuffers();
+        ParticleSystemBuffers(ParticleSystemApplication *app);
         ParticleSystemBuffers(const ParticleSystemBuffers &other) = delete;
         ParticleSystemBuffers &operator=(const ParticleSystemBuffers &other) = delete;
         ~ParticleSystemBuffers();
 
-        void appInfo(VkDevice appDevice, VkPhysicalDeviceMemoryProperties appMemProperties, VkCommandPool appCommandPool, VkQueue appGraphicsQueue);
+        void appInfo(VkDevice appDevice, VkPhysicalDeviceMemoryProperties appMemProperties, VkCommandPool appCommandPool, VkQueue appGraphicsQueue, VkExtent2D swapChainExtent);
         void loadModel();
 
-        void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+        // void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
         void copyBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
         void createVertexBuffer(VkCommandBuffer commandBuffer);
         void createStorageBuffers();
@@ -24,14 +27,13 @@ class ParticleSystemBuffers
         void createUniformBuffers();
         void createSceneDataBuffers();
         void createShadowMapUniformBuffers();
+        void updateUniformBuffer(uint32_t currentImage);
+        void cleanup();
 
     private:
         const std::string MODEL_PATH = "models/moon.obj";
 
-        VkDevice device;
-        VkPhysicalDeviceMemoryProperties memProperties;
-        VkCommandPool commandPool;
-        VkQueue graphicsQueue;
+        ParticleSystemApplication *parentApp;
 
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;

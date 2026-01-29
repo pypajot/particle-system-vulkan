@@ -2,6 +2,7 @@
 
 #include "ParticleSystemApplication.hpp"
 #include "ParticleSystemDescriptorSets.hpp"
+#include "ParticleSystemUtils.hpp"
 #include "Particle.hpp"
 
 ParticleSystemDescriptorSets::ParticleSystemDescriptorSets() {}
@@ -195,7 +196,7 @@ void ParticleSystemDescriptorSets::createComputeDescriptorSetLayout(VkDevice dev
     layoutInfo.bindingCount = layoutBindings.size();
     layoutInfo.pBindings = layoutBindings.data();
 
-    VK_CHECK(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &particleInitDescriptorSetLayout));
+    VK_CHECK(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &computeDescriptorSetLayout));
 }
 
 void ParticleSystemDescriptorSets::createComputeDescriptorSets(VkDevice device)
@@ -311,4 +312,13 @@ void ParticleSystemDescriptorSets::createShadowMapDescriptorSets(VkDevice device
 
         vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
+}
+
+void ParticleSystemDescriptorSets::cleanup()
+{
+    vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+
+    vkDestroyDescriptorSetLayout(device, renderDescriptorSetLayout, nullptr);
+    vkDestroyDescriptorSetLayout(device, computeDescriptorSetLayout, nullptr);
+    vkDestroyDescriptorSetLayout(device, shadowMapDescriptorSetLayout, nullptr);
 }
