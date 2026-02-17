@@ -5,16 +5,25 @@
 
 #include "Particle.hpp"
 
-class ParticleSystem
+#define PARTICLE_NUMBER 16777216
+
+/// @brief The particle system object and the related texture
+class Rings
 {
     private:
+        /// @brief Path to the ring texture
         const std::string RING_TEXTURE_PATH = "textures/saturn_ring_texture.png";
 
+        /// @brief Device buffers for the particles
         std::vector<VkBuffer> shaderStorageBuffers;
+        /// @brief Device buffer memory for the particles
         std::vector<VkDeviceMemory> shaderStorageBuffersMemory;
         
+        /// @brief Image for the ring texture
         VkImage ringImage;
+        /// @brief Memory for the ring texture
         VkDeviceMemory ringImageMemory;
+        /// @brief Image view for the ring texture
         VkImageView ringImageView;
 
     public:

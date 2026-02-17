@@ -41,7 +41,7 @@ void Moon::loadModel()
         {
             Vertex vertex{};
 
-            vertex.pos =
+            vertex.position =
             {
                 attrib.vertices[3 * index.vertex_index + 0],
                 attrib.vertices[3 * index.vertex_index + 1],
@@ -109,6 +109,14 @@ void Moon::createIndexBuffer(VkDevice device, VkCommandPool commandPool, VkQueue
 
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
+}
+
+void Moon::load(VkDevice device, VkPhysicalDeviceMemoryProperties memProperties, VkQueue graphicsQueue, VkCommandPool commandPool)
+{
+    loadModel();
+    loadTexture(device, memProperties, graphicsQueue, commandPool);
+    createIndexBuffer(device, commandPool, graphicsQueue, memProperties);
+    createVertexBuffer(device, commandPool, graphicsQueue, memProperties);
 }
 
 void Moon::draw(VkCommandBuffer commandBuffer)

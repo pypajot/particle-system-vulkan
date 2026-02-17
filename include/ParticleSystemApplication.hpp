@@ -18,58 +18,44 @@
 #include "ComputePipeline.hpp"
 #include "ShadowmapPipeline.hpp"
 #include "Moon.hpp"
-#include "ParticleSystem.hpp"
+#include "Rings.hpp"
 
 #define NUMBER_OF_FRAMES_IN_FLIGHT 2
 
-#define PARTICLE_NUMBER 16777216
-
-struct SceneData
-{
-    glm::vec4 ambientLight;
-    glm::vec4 sunlightDirection;
-    glm::vec4 sunlightColor;
-};
-
-struct UniformBufferObject
-{
-    glm::mat4 model;
-    glm::mat4 view;
-    glm::mat4 proj;
-    glm::mat4 projViewModel;
-};
-
+/// @brief The main class used to manage vulkan initialization and launch the application 
 class ParticleSystemApplication
 {
     public:
-        ParticleSystemApplication();
-        ParticleSystemApplication(const ParticleSystemApplication &other) = delete;
-        ParticleSystemApplication &operator=(const ParticleSystemApplication &other) = delete;
-        ~ParticleSystemApplication();
-
         void run();
 
     private:
+        /// @brief Window object for the app
         Window window;
         
+        /// @brief VUlkan instance
         VkInstance instance;
         VkDebugUtilsMessengerEXT debugMessenger;
         VkSurfaceKHR surface;
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
         VkPhysicalDeviceMemoryProperties memProperties;
+        /// @brief Vulkan logical device
         VkDevice device;
         VkSampleCountFlagBits msaaSamples;
+
+        /// @brief Texture sampler used for both the loaded texture and shadowmap
         VkSampler textureSampler;
 
         VkDescriptorPool descriptorPool;
 
         Swapchain swapchain;
 
+        /// @brief Graphics and compute queue
+        /// @note Graphics and compute are guarateed to have a queue family in common in Vulkan
         VkQueue graphicsAndComputeQueue;
         VkQueue presentQueue;
 
         Moon moon;
-        ParticleSystem particleSystem;
+        Rings rings;
 
         Camera camera;
         Light light;
@@ -85,6 +71,7 @@ class ParticleSystemApplication
         std::vector<VkSemaphore> imageAvailableSemaphore;
         std::vector<VkFence> inFlightFence;
 
+        /// @brief Counter for the frames in flight
         uint32_t currentFrame = 0;
 
         const std::vector<const char*> validationLayers =
@@ -114,8 +101,6 @@ class ParticleSystemApplication
         std::vector<const char*> getRequiredExtensions();
         bool checkDeviceExtensionSupport(VkPhysicalDevice device);
         int rateDeviceSuitability(VkPhysicalDevice device);
-
-        QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
         
         void createInstance();
         void setupDebugMessenger();

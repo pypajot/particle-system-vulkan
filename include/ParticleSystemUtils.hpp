@@ -1,9 +1,11 @@
 #pragma once
 
 #include <vulkan/vulkan.hpp>
+
 #include "QueueFamilyIndices.hpp"
 #include "Swapchain.hpp"
 
+/// @brief Throws an error with the file and line number when result is not VK_SUCCESS
 #define VK_CHECK(result) VulkanCheckError(result, __FILE__, __LINE__)
 
 void VulkanCheckError(VkResult result, const char *file, int lineNumber);
@@ -40,7 +42,7 @@ void createTextureImage
     VkCommandPool commandPool
 );
 
-void transition_image_layout
+void transitionImageLayout
 (
     VkCommandBuffer commandBuffer,
     VkImage targetImage,
@@ -57,7 +59,11 @@ VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkI
 void createBuffer(VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory, VkPhysicalDeviceMemoryProperties memProperties);
 void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue);
 void copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+/// @brief Begin a command buffer to be used for a small number of commands
+/// @note Is made to be used with endSingleTimeCommands
 VkCommandBuffer beginSingleTimeCommands(VkDevice device, VkCommandPool commandPool);
+/// @brief End and submit the command buffer to submitQueue
+/// @note Is made to be used with beginSingleTimeCommands
 void endSingleTimeCommands(VkDevice device, VkCommandBuffer commandBuffer, VkQueue submitQueue, VkCommandPool commandPool);
 VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 VkFormat findDepthFormat(VkPhysicalDevice physicalDevice);

@@ -46,12 +46,11 @@ float computeShadow(float angle)
 
 void main()
 {
-    float angle = dot(normalize(scene.sunlightDirection).xyz, fragNormal);
+    float angle = dot(normalize(scene.sunlightDirection.xyz), fragNormal);
     if (angle < 0.0f)
         angle = 0.0f;
-    float diffuse = angle;
     float shadow = computeShadow(angle);
     float lightIntensity = angle * (1 - shadow) + scene.ambientLight.x;
-    outColor = texture(texSampler, fragTexCoord) * scene.sunlightColor * lightIntensity;
+    outColor = texture(texSampler, fragTexCoord) * vec4(scene.sunlightColor) * lightIntensity;
 }
 

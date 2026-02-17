@@ -9,7 +9,7 @@ SRCDIR := src
 SRCS := main.cpp \
 		ComputePipeline.cpp \
 		Moon.cpp \
-		ParticleSystem.cpp \
+		Rings.cpp \
 		ParticleSystemApplication.cpp \
 		ParticleSystemUtils.cpp \
 		RenderingPipeline.cpp \

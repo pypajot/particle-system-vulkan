@@ -10,15 +10,6 @@
 #include <algorithm>
 #include <fstream>
 
-void testFun()
-{
-    std::cout << "test\n";
-}
-
-ParticleSystemApplication::ParticleSystemApplication() {}
-
-ParticleSystemApplication::~ParticleSystemApplication() {}
-
 bool ParticleSystemApplication::checkValidationLayerSupport()
 {
     uint32_t layerCount;
@@ -163,36 +154,6 @@ void ParticleSystemApplication::setupDebugMessenger()
     VK_CHECK(CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger));
 }
 
-QueueFamilyIndices ParticleSystemApplication::findQueueFamilies(VkPhysicalDevice device)
-{
-    QueueFamilyIndices indices;
-
-    uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-    int i = 0;
-    for (const auto& queueFamily : queueFamilies)
-    {
-        if (queueFamily.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
-            indices.graphicsAndComputeFamily = i;
-
-        VkBool32 presentSupport = false;
-        VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport));
-
-        if (presentSupport)
-            indices.presentFamily = i;
-
-        if (indices.isComplete())
-            break;
-
-        i++;
-    }
-    return indices;
-}
-
 bool ParticleSystemApplication::checkDeviceExtensionSupport(VkPhysicalDevice device)
 {
     uint32_t extensionCount;
@@ -235,7 +196,7 @@ int ParticleSystemApplication::rateDeviceSuitability(VkPhysicalDevice device)
 
     int score = 0;
 
-    QueueFamilyIndices indices = findQueueFamilies(device);
+    QueueFamilyIndices indices = findQueueFamilies(device, surface);
     if (!indices.isComplete())
         return 0;
 
@@ -296,7 +257,7 @@ void ParticleSystemApplication::pickPhysicalDevice()
 
 void ParticleSystemApplication::createLogicalDevice()
 {
-    QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+    QueueFamilyIndices indices = findQueueFamilies(physicalDevice, surface);
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 
     std::unordered_set<uint32_t> uniqueQueueFamilies =
@@ -363,7 +324,7 @@ void ParticleSystemApplication::createSurface()
 
 void ParticleSystemApplication::createCommandPool()
 {
-    QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
+    QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice, surface);
 
     VkCommandPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -481,19 +442,16 @@ void ParticleSystemApplication::initVulkan()
     createDescriptorPool();
     createTextureSamplers();
 
-    moon.loadModel();
-    moon.loadTexture(device, memProperties, graphicsAndComputeQueue, commandPool);
-    moon.createIndexBuffer(device, commandPool, graphicsAndComputeQueue, memProperties);
-    moon.createVertexBuffer(device, commandPool, graphicsAndComputeQueue, memProperties);
+    moon.load(device, memProperties, graphicsAndComputeQueue, commandPool);
 
-    particleSystem.loadTexture(device, memProperties, graphicsAndComputeQueue, commandPool);
-    particleSystem.createBuffers(device, memProperties);
+    rings.loadTexture(device, memProperties, graphicsAndComputeQueue, commandPool);
+    rings.createBuffers(device, memProperties);
 
     computePipeline.init(device, graphicsAndComputeQueue);
     computePipeline.createCommandBuffers(commandPool);
     computePipeline.createSyncObjects();
     computePipeline.createComputeDescriptorSetLayout();
-    computePipeline.createComputeDescriptorSets(particleSystem.getBuffers(), descriptorPool, textureSampler, moon.getTextureImageView());
+    computePipeline.createComputeDescriptorSets(rings.getBuffers(), descriptorPool, textureSampler, moon.getTextureImageView());
     computePipeline.createParticleInitPipeline();
     computePipeline.createParticleUpdatePipeline();
 
@@ -529,8 +487,8 @@ void ParticleSystemApplication::recordCommandBuffer(VkCommandBuffer commandBuffe
     beginInfo.pInheritanceInfo = nullptr;
 
     VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
-    shadowMapPipeline.recordCommandBuffer(commandBuffer, currentFrame, moon, particleSystem);
-    renderingPipeline.recordCommandBuffer(commandBuffer, swapchain.getImageResource(imageIndex), currentFrame, moon, particleSystem);
+    shadowMapPipeline.recordRendering(commandBuffer, currentFrame, moon, rings);
+    renderingPipeline.recordRendering(commandBuffer, swapchain.getImageResource(imageIndex), currentFrame, moon, rings);
     VK_CHECK(vkEndCommandBuffer(commandBuffer));
 }
 

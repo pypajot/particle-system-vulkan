@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.hpp>
 #include <optional>
 
+/// @brief Helper structure for the different queue indices
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphicsAndComputeFamily;

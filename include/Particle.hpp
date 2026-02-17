@@ -4,10 +4,17 @@
 #include <glm/glm.hpp>
 #include <array>
 
+/// @brief Particle object in 3-dimensional space
 struct Particle
 {
+    /// @brief Position of the particle
+    /// @note The last float is just there for padding
     glm::vec4 position;
+    /// @brief Speed of the particle
+    /// @note The last float is just there for padding
     glm::vec4 velocity;
+    /// @brief Position of the particle
+    /// @note The last float is just there for padding
     glm::vec4 color;
 
     static VkVertexInputBindingDescription getBindingDescription()

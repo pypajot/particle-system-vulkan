@@ -60,7 +60,7 @@ static const std::unordered_map<VkResult, std::string> VulkanErrorToString
 void VulkanCheckError(VkResult result, const char *file, int lineNumber)
 {
     if (result == VK_SUCCESS)
-    return;
+        return;
     
     std::string line = std::to_string(lineNumber);
     std::string errorString = "Error: " + VulkanErrorToString.at(result) + "\nin file " + file + "\nline: " + line + "\n";
@@ -216,7 +216,7 @@ void createTextureImage
 
     VkCommandBuffer commandBuffer = beginSingleTimeCommands(device, commandPool);
 
-    transition_image_layout
+    transitionImageLayout
     (
         commandBuffer,
         targetImage,
@@ -230,7 +230,7 @@ void createTextureImage
     );
     copyBufferToImage(commandBuffer, stagingBuffer, targetImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
 
-    transition_image_layout
+    transitionImageLayout
     (
         commandBuffer,
         targetImage,
@@ -397,7 +397,7 @@ VkFormat findDepthFormat(VkPhysicalDevice physicalDevice)
     );
 }
 
-void transition_image_layout
+void transitionImageLayout
 (
     VkCommandBuffer commandBuffer,
     VkImage targetImage,

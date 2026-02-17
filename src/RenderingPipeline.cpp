@@ -1,5 +1,7 @@
 #include "RenderingPipeline.hpp"
 #include "ParticleSystemApplication.hpp"
+#include "UniformBufferObject.hpp"
+#include "SceneDataBufferObject.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -113,7 +115,7 @@ void RenderingPipeline::createDescriptorSets
         VkDescriptorBufferInfo sceneDataBufferInfo{};
         sceneDataBufferInfo.buffer = sceneDataBuffers[i];
         sceneDataBufferInfo.offset = 0;
-        sceneDataBufferInfo.range = sizeof(SceneData);
+        sceneDataBufferInfo.range = sizeof(SceneDataBufferObject);
 
         descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[2].dstSet = descriptorSets[i];
@@ -172,7 +174,7 @@ void RenderingPipeline::createUniformBuffers()
 
 void RenderingPipeline::createSceneDataBuffers()
 {
-    VkDeviceSize bufferSize = sizeof(SceneData);
+    VkDeviceSize bufferSize = sizeof(SceneDataBufferObject);
 
     sceneDataBuffers.resize(NUMBER_OF_FRAMES_IN_FLIGHT);
     sceneDataBuffersMemory.resize(NUMBER_OF_FRAMES_IN_FLIGHT);
@@ -553,21 +555,21 @@ void RenderingPipeline::updateUniformBuffers(const Light &light, const Camera &c
 
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 
-    SceneData scene{};
-    scene.ambientLight = glm::vec4(glm::vec3(light.ambient), 1.0f);
-    scene.sunlightColor = light.color;
-    scene.sunlightDirection = glm::vec4(light.direction, 1.0f);
+    SceneDataBufferObject scene{};
+    scene.ambientLight = glm::vec4(light.ambient);
+    scene.lightColor = glm::vec4(light.color, 1.0f);
+    scene.lightDirection = glm::vec4(light.direction, 1.0f);
 
     memcpy(sceneDataBuffersMapped[currentImage], &scene, sizeof(scene));
 }
 
-void RenderingPipeline::recordCommandBuffer(VkCommandBuffer commandBuffer, SwapChainImageResource imageResource, uint32_t currentFrame, Moon &moon, ParticleSystem &particles)
+void RenderingPipeline::recordRendering(VkCommandBuffer commandBuffer, SwapChainImageResource imageResource, uint32_t currentFrame, Moon &moon, Rings &particles)
 {
     std::array<VkClearValue, 2> clearValues{};
     clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
     clearValues[1].depthStencil = {1.0f, 0};
 
-    transition_image_layout
+    transitionImageLayout
     (
         commandBuffer,
         imageResource.swapchainImage,
@@ -580,7 +582,7 @@ void RenderingPipeline::recordCommandBuffer(VkCommandBuffer commandBuffer, SwapC
         VK_IMAGE_ASPECT_COLOR_BIT
     );
 
-    transition_image_layout
+    transitionImageLayout
     (
         commandBuffer,
         depthImage,
@@ -593,7 +595,7 @@ void RenderingPipeline::recordCommandBuffer(VkCommandBuffer commandBuffer, SwapC
         VK_IMAGE_ASPECT_DEPTH_BIT
     );
 
-    transition_image_layout
+    transitionImageLayout
     (
         commandBuffer,
         colorImage,
@@ -667,7 +669,7 @@ void RenderingPipeline::recordCommandBuffer(VkCommandBuffer commandBuffer, SwapC
 
     vkCmdEndRendering(commandBuffer);
 
-    transition_image_layout
+    transitionImageLayout
     (
         commandBuffer,
         imageResource.swapchainImage,

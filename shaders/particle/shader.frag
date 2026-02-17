@@ -40,6 +40,6 @@ float computeShadow()
 
 void main()
 {
-    outColor = inColor * ((1.0 - computeShadow()) + scene.ambientLight);
+    outColor = inColor * ((1.0 - computeShadow()) + scene.ambientLight.x);
 }
 

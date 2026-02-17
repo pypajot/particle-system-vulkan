@@ -1,6 +1,8 @@
 #include "ShadowmapPipeline.hpp"
 #include "ParticleSystemUtils.hpp"
 #include "ParticleSystemApplication.hpp"
+#include "UniformBufferObject.hpp"
+
 
 void ShadowmapPipeline::init(VkDevice device, VkPhysicalDevice physicalDevice, VkPhysicalDeviceMemoryProperties memProperties)
 {
@@ -449,7 +451,7 @@ VkImageView ShadowmapPipeline::getDepthMapView() const
     return depthMapView;
 }
 
-void ShadowmapPipeline::updateUniformBuffers(const Light &light, u_int32_t currentImage)
+void ShadowmapPipeline::updateUniformBuffers(const Light &light, u_int32_t currentFrame)
 {
     UniformBufferObject ubo{};
 
@@ -459,12 +461,12 @@ void ShadowmapPipeline::updateUniformBuffers(const Light &light, u_int32_t curre
     
     ubo.projViewModel = ubo.proj * ubo.view * ubo.model;
 
-    memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+    memcpy(uniformBuffersMapped[currentFrame], &ubo, sizeof(ubo));
 }
 
-void ShadowmapPipeline::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t currentFrame, Moon &moon, ParticleSystem &particles)
+void ShadowmapPipeline::recordRendering(VkCommandBuffer commandBuffer, uint32_t currentFrame, Moon &moon, Rings &particles)
 {
-    transition_image_layout
+    transitionImageLayout
     (
         commandBuffer,
         depthMap,
@@ -526,7 +528,7 @@ void ShadowmapPipeline::recordCommandBuffer(VkCommandBuffer commandBuffer, uint3
 
     vkCmdEndRendering(commandBuffer);
 
-    transition_image_layout
+    transitionImageLayout
     (
         commandBuffer,
         depthMap,

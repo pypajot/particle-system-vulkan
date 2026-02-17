@@ -1,13 +1,13 @@
-#include "ParticleSystem.hpp"
+#include "Rings.hpp"
 #include "ParticleSystemApplication.hpp"
 #include "ParticleSystemUtils.hpp"
 
-void ParticleSystem::loadTexture(VkDevice device, VkPhysicalDeviceMemoryProperties memProperties, VkQueue graphicsQueue, VkCommandPool commandPool)
+void Rings::loadTexture(VkDevice device, VkPhysicalDeviceMemoryProperties memProperties, VkQueue graphicsQueue, VkCommandPool commandPool)
 {
     createTextureImage(RING_TEXTURE_PATH, ringImage, ringImageMemory, device, memProperties, graphicsQueue, commandPool);
 }
 
-void ParticleSystem::createBuffers(VkDevice device, VkPhysicalDeviceMemoryProperties memProperties)
+void Rings::createBuffers(VkDevice device, VkPhysicalDeviceMemoryProperties memProperties)
 {
     shaderStorageBuffers.resize(NUMBER_OF_FRAMES_IN_FLIGHT);
     shaderStorageBuffersMemory.resize(NUMBER_OF_FRAMES_IN_FLIGHT);
@@ -19,7 +19,7 @@ void ParticleSystem::createBuffers(VkDevice device, VkPhysicalDeviceMemoryProper
     
 }
 
-void ParticleSystem::draw(VkCommandBuffer commandBuffer, uint32_t currentFrame)
+void Rings::draw(VkCommandBuffer commandBuffer, uint32_t currentFrame)
 {
     VkBuffer vertexBuffers[] = {shaderStorageBuffers[currentFrame]};
     VkDeviceSize offsets[] = {0};
@@ -27,7 +27,7 @@ void ParticleSystem::draw(VkCommandBuffer commandBuffer, uint32_t currentFrame)
     vkCmdDraw(commandBuffer, PARTICLE_NUMBER, 1, 0, 0);
 }
 
-std::vector<VkBuffer> ParticleSystem::getBuffers()
+std::vector<VkBuffer> Rings::getBuffers()
 {
     return shaderStorageBuffers;
 }
