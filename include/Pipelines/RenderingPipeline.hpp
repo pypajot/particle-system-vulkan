@@ -3,10 +3,10 @@
 #include <vulkan/vulkan.hpp>
 #include <vector>
 
-#include "ShadowmapPipeline.hpp"
+#include "Pipelines/ShadowmapPipeline.hpp"
 #include "Swapchain.hpp"
-#include "Light.hpp"
-#include "Camera.hpp"
+#include "Scene/Light.hpp"
+#include "Scene/Camera.hpp"
 
 /// @brief Class that manages the pipelines used for rendering to the swapchain images and its associated objects
 class RenderingPipeline

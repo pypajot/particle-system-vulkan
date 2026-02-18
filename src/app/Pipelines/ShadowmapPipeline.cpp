@@ -1,71 +1,77 @@
-#include "RenderingPipeline.hpp"
+#include "Pipelines/ShadowmapPipeline.hpp"
+#include "ParticleSystemUtils.hpp"
 #include "ParticleSystemApplication.hpp"
-#include "UniformBufferObject.hpp"
-#include "SceneDataBufferObject.hpp"
+#include "BufferObjects/UniformBufferObject.hpp"
 
-#include <glm/gtc/matrix_transform.hpp>
 
-void RenderingPipeline::init(VkDevice device, VkPhysicalDevice physicalDevice, VkPhysicalDeviceMemoryProperties memProperties, VkFormat swapchainImageFormat, VkExtent2D swapChainExtent, VkSampleCountFlagBits msaaSamples)
+void ShadowmapPipeline::init(VkDevice device, VkPhysicalDevice physicalDevice, VkPhysicalDeviceMemoryProperties memProperties)
 {
     this->device = device;
-    depthFormat = findDepthFormat(physicalDevice);
     this->memProperties = memProperties;
-    this->swapChainImageFormat = swapchainImageFormat;
-    this->swapChainExtent = swapChainExtent;
-    this->msaaSamples = msaaSamples;
+    depthFormat = findDepthFormat(physicalDevice);
 }
 
-void RenderingPipeline::createDescriptorSetLayout()
+void ShadowmapPipeline::createDepthMap()
 {
-    std::array<VkDescriptorSetLayoutBinding, 5> bindings;
+    createImage
+    (
+        device,
+        memProperties,
+        shadowMapExtent.width,
+        shadowMapExtent.height,
+        VK_SAMPLE_COUNT_1_BIT,
+        depthFormat,
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        depthMap,
+        depthMapMemory
+    );
+    depthMapView = createImageView(device, depthMap, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+}
 
-    bindings[0].binding = 0;
-    bindings[0].descriptorCount = 1;
-    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    bindings[0].pImmutableSamplers = nullptr;
-    bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+void ShadowmapPipeline::createUniformBuffers()
+{
+    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
-    bindings[1].binding = 1;
-    bindings[1].descriptorCount = 1;
-    bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    bindings[1].pImmutableSamplers = nullptr;
-    bindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    uniformBuffers.resize(NUMBER_OF_FRAMES_IN_FLIGHT);
+    uniformBuffersMemory.resize(NUMBER_OF_FRAMES_IN_FLIGHT);
+    uniformBuffersMapped.resize(NUMBER_OF_FRAMES_IN_FLIGHT);
 
-    bindings[2].binding = 2;
-    bindings[2].descriptorCount = 1;
-    bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    bindings[2].pImmutableSamplers = nullptr;
-    bindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    for (size_t i = 0; i < NUMBER_OF_FRAMES_IN_FLIGHT; i++)
+    {
+        createBuffer
+        (
+            device,
+            bufferSize,
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+            uniformBuffers[i],
+            uniformBuffersMemory[i],
+            memProperties
+        );
+        VK_CHECK(vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]));
+    }
+}
 
-    bindings[3].binding = 3;
-    bindings[3].descriptorCount = 1;
-    bindings[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    bindings[3].pImmutableSamplers = nullptr;
-    bindings[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-    bindings[4].binding = 4;
-    bindings[4].descriptorCount = 1;
-    bindings[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    bindings[4].pImmutableSamplers = nullptr;
-    bindings[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+void ShadowmapPipeline::createDescriptorSetLayout()
+{
+    VkDescriptorSetLayoutBinding layoutBinding;
+    layoutBinding.binding = 0;
+    layoutBinding.descriptorCount = 1;
+    layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    layoutBinding.pImmutableSamplers = nullptr;
+    layoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
-    layoutInfo.pBindings = bindings.data();
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &layoutBinding;
 
     VK_CHECK(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout));
 }
 
-void RenderingPipeline::createDescriptorSets
-(
-    std::vector<VkBuffer> shadowMapUniformBuffers,
-    VkImageView textureImageView,
-    VkSampler textureSampler,
-    VkImageView depthMapView,
-    VkSampler shadowMapTextureSampler,
-    VkDescriptorPool descriptorPool
-)
+void ShadowmapPipeline::createDescriptorSets(VkDescriptorPool descriptorPool)
 {
     std::vector<VkDescriptorSetLayout> layouts(NUMBER_OF_FRAMES_IN_FLIGHT, descriptorSetLayout);
 
@@ -76,16 +82,17 @@ void RenderingPipeline::createDescriptorSets
     allocInfo.pSetLayouts = layouts.data();
 
     descriptorSets.resize(NUMBER_OF_FRAMES_IN_FLIGHT);
+
     VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()));
 
     for (size_t i = 0; i < NUMBER_OF_FRAMES_IN_FLIGHT; i++)
     {
-        std::array<VkWriteDescriptorSet, 5> descriptorWrites{};
+        std::array<VkWriteDescriptorSet, 1> descriptorWrites{};
 
-        VkDescriptorBufferInfo uniformBufferInfo{};
-        uniformBufferInfo.buffer = uniformBuffers[i];
-        uniformBufferInfo.offset = 0;
-        uniformBufferInfo.range = sizeof(UniformBufferObject);
+        VkDescriptorBufferInfo shadowMapBufferInfo{};
+        shadowMapBufferInfo.buffer = uniformBuffers[i];
+        shadowMapBufferInfo.offset = 0;
+        shadowMapBufferInfo.range = sizeof(UniformBufferObject);
 
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = descriptorSets[i];
@@ -93,122 +100,22 @@ void RenderingPipeline::createDescriptorSets
         descriptorWrites[0].dstArrayElement = 0;
         descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptorWrites[0].descriptorCount = 1;
-        descriptorWrites[0].pBufferInfo = &uniformBufferInfo;
+        descriptorWrites[0].pBufferInfo = &shadowMapBufferInfo;
         descriptorWrites[0].pImageInfo = nullptr;
         descriptorWrites[0].pTexelBufferView = nullptr;
-
-        VkDescriptorBufferInfo shadowMapBufferInfo{};
-        shadowMapBufferInfo.buffer = shadowMapUniformBuffers[i];
-        shadowMapBufferInfo.offset = 0;
-        shadowMapBufferInfo.range = sizeof(UniformBufferObject);
-
-        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[1].dstSet = descriptorSets[i];
-        descriptorWrites[1].dstBinding = 1;
-        descriptorWrites[1].dstArrayElement = 0;
-        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptorWrites[1].descriptorCount = 1;
-        descriptorWrites[1].pBufferInfo = &shadowMapBufferInfo;
-        descriptorWrites[1].pImageInfo = nullptr;
-        descriptorWrites[1].pTexelBufferView = nullptr;
-
-        VkDescriptorBufferInfo sceneDataBufferInfo{};
-        sceneDataBufferInfo.buffer = sceneDataBuffers[i];
-        sceneDataBufferInfo.offset = 0;
-        sceneDataBufferInfo.range = sizeof(SceneDataBufferObject);
-
-        descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[2].dstSet = descriptorSets[i];
-        descriptorWrites[2].dstBinding = 2;
-        descriptorWrites[2].dstArrayElement = 0;
-        descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptorWrites[2].descriptorCount = 1;
-        descriptorWrites[2].pBufferInfo = &sceneDataBufferInfo;
-        descriptorWrites[2].pImageInfo = nullptr;
-        descriptorWrites[2].pTexelBufferView = nullptr;
-
-        VkDescriptorImageInfo imageInfo{};
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageInfo.imageView = textureImageView;
-        imageInfo.sampler = textureSampler;
-
-        descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[3].dstSet = descriptorSets[i];
-        descriptorWrites[3].dstBinding = 3;
-        descriptorWrites[3].dstArrayElement = 0;
-        descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[3].descriptorCount = 1;
-        descriptorWrites[3].pImageInfo = &imageInfo;
-
-        VkDescriptorImageInfo shadowMapTextureImageInfo{};
-        shadowMapTextureImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        shadowMapTextureImageInfo.imageView = depthMapView;
-        shadowMapTextureImageInfo.sampler = shadowMapTextureSampler;
-
-        descriptorWrites[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[4].dstSet = descriptorSets[i];
-        descriptorWrites[4].dstBinding = 4;
-        descriptorWrites[4].dstArrayElement = 0;
-        descriptorWrites[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[4].descriptorCount = 1;
-        descriptorWrites[4].pImageInfo = &shadowMapTextureImageInfo;
 
         vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
 }
 
-void RenderingPipeline::createUniformBuffers()
+void ShadowmapPipeline::createModelPipeline()
 {
-    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-
-    uniformBuffers.resize(NUMBER_OF_FRAMES_IN_FLIGHT);
-    uniformBuffersMemory.resize(NUMBER_OF_FRAMES_IN_FLIGHT);
-    uniformBuffersMapped.resize(NUMBER_OF_FRAMES_IN_FLIGHT);
-
-    for (size_t i = 0; i < NUMBER_OF_FRAMES_IN_FLIGHT; i++)
-    {
-        createBuffer(device, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, uniformBuffers[i], uniformBuffersMemory[i], memProperties);
-        VK_CHECK(vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]));
-    }
-}
-
-void RenderingPipeline::createSceneDataBuffers()
-{
-    VkDeviceSize bufferSize = sizeof(SceneDataBufferObject);
-
-    sceneDataBuffers.resize(NUMBER_OF_FRAMES_IN_FLIGHT);
-    sceneDataBuffersMemory.resize(NUMBER_OF_FRAMES_IN_FLIGHT);
-    sceneDataBuffersMapped.resize(NUMBER_OF_FRAMES_IN_FLIGHT);
-
-    for (size_t i = 0; i < NUMBER_OF_FRAMES_IN_FLIGHT; i++)
-    {
-        createBuffer(device, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, sceneDataBuffers[i], sceneDataBuffersMemory[i], memProperties);
-        VK_CHECK(vkMapMemory(device, sceneDataBuffersMemory[i], 0, bufferSize, 0, &sceneDataBuffersMapped[i]));
-    }
-}
-
-void RenderingPipeline::createColorImage()
-{
-    VkFormat colorFormat = swapChainImageFormat;
-    createImage(device, memProperties, swapChainExtent.width, swapChainExtent.height, msaaSamples, colorFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, colorImage, colorImageMemory);
-    colorImageView = createImageView(device, colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
-}
-
-void RenderingPipeline::createDepthImage()
-{
-    // VkFormat depthFormat = findDepthFormat();
-    createImage(device, memProperties, swapChainExtent.width, swapChainExtent.height, msaaSamples, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
-    depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-}
-
-void RenderingPipeline::createModelPipeline()
-{
-    auto vertShaderCode = readFile("shaders/triangle/shader.vert.spv");
-    auto fragShaderCode = readFile("shaders/triangle/shader.frag.spv");
+    auto vertShaderCode = readFile("shaders/shadows/model.vert.spv");
+    auto fragShaderCode = readFile("shaders/shadows/shader.frag.spv");
 
     VkShaderModule vertShaderModule = createShaderModule(device, vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(device, fragShaderCode);
-    
+
     VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
     vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -222,7 +129,6 @@ void RenderingPipeline::createModelPipeline()
     fragShaderStageInfo.pName = "main";
 
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
-
     auto bindingDescription = Vertex::getBindingDescription();
     auto attributeDescriptions = Vertex::getAttributeDescriptions();
 
@@ -241,16 +147,15 @@ void RenderingPipeline::createModelPipeline()
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = (float)swapChainExtent.width;
-    viewport.height = (float)swapChainExtent.height;
+    viewport.width = (float)shadowMapExtent.width;
+    viewport.height = (float)shadowMapExtent.height;
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
     VkRect2D scissor{};
     scissor.offset = {0, 0};
-    scissor.extent = swapChainExtent;
+    scissor.extent = shadowMapExtent;
 
-    // Uncomment for resize window
     std::vector<VkDynamicState> dynamicStates = {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR
@@ -287,7 +192,7 @@ void RenderingPipeline::createModelPipeline()
     VkPipelineMultisampleStateCreateInfo multisampling{};
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampling.sampleShadingEnable = VK_FALSE;
-    multisampling.rasterizationSamples = msaaSamples;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
     multisampling.minSampleShading = 1.0f;
     multisampling.pSampleMask = nullptr;
     multisampling.alphaToCoverageEnable = VK_FALSE;
@@ -338,8 +243,8 @@ void RenderingPipeline::createModelPipeline()
     VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo{};
     
     pipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-    pipelineRenderingCreateInfo.colorAttachmentCount = 1;
-    pipelineRenderingCreateInfo.pColorAttachmentFormats = &swapChainImageFormat;
+    pipelineRenderingCreateInfo.colorAttachmentCount = 0;
+    pipelineRenderingCreateInfo.pColorAttachmentFormats = nullptr;
     pipelineRenderingCreateInfo.depthAttachmentFormat = depthFormat;
 
     VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -371,10 +276,10 @@ void RenderingPipeline::createModelPipeline()
     vkDestroyShaderModule(device, fragShaderModule, nullptr);
 }
 
-void RenderingPipeline::createParticlePipeline()
+void ShadowmapPipeline::createParticlePipeline()
 {
-    auto vertShaderCode = readFile("shaders/particle/shader.vert.spv");
-    auto fragShaderCode = readFile("shaders/particle/shader.frag.spv");
+    auto vertShaderCode = readFile("shaders/shadows/particle.vert.spv");
+    auto fragShaderCode = readFile("shaders/shadows/shader.frag.spv");
 
     VkShaderModule vertShaderModule = createShaderModule(device, vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(device, fragShaderCode);
@@ -411,15 +316,16 @@ void RenderingPipeline::createParticlePipeline()
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = (float)swapChainExtent.width;
-    viewport.height = (float)swapChainExtent.height;
+    viewport.width = (float)shadowMapExtent.width;
+    viewport.height = (float)shadowMapExtent.height;
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
     VkRect2D scissor{};
     scissor.offset = {0, 0};
-    scissor.extent = swapChainExtent;
+    scissor.extent = shadowMapExtent;
 
+    // Uncomment for resize window
     std::vector<VkDynamicState> dynamicStates = {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR
@@ -456,7 +362,7 @@ void RenderingPipeline::createParticlePipeline()
     VkPipelineMultisampleStateCreateInfo multisampling{};
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampling.sampleShadingEnable = VK_FALSE;
-    multisampling.rasterizationSamples = msaaSamples;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
     multisampling.minSampleShading = 1.0f;
     multisampling.pSampleMask = nullptr;
     multisampling.alphaToCoverageEnable = VK_FALSE;
@@ -464,10 +370,6 @@ void RenderingPipeline::createParticlePipeline()
 
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    // colorBlendAttachment.blendEnable = VK_FALSE;
-    // colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-    // colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-    // To test
     colorBlendAttachment.blendEnable = VK_TRUE;
     colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
     colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
@@ -511,8 +413,8 @@ void RenderingPipeline::createParticlePipeline()
     VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo {};
     
     pipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-    pipelineRenderingCreateInfo.colorAttachmentCount = 1;
-    pipelineRenderingCreateInfo.pColorAttachmentFormats = &swapChainImageFormat;
+    pipelineRenderingCreateInfo.colorAttachmentCount = 0;
+    pipelineRenderingCreateInfo.pColorAttachmentFormats = nullptr;
     pipelineRenderingCreateInfo.depthAttachmentFormat = depthFormat;
 
     VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -531,7 +433,7 @@ void RenderingPipeline::createParticlePipeline()
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.pDynamicState = &dynamicState;
 
-    pipelineInfo.layout = modelPipelineLayout;
+    pipelineInfo.layout = particlePipelineLayout;
     pipelineInfo.renderPass = nullptr;
     pipelineInfo.subpass = 0;
 
@@ -544,48 +446,30 @@ void RenderingPipeline::createParticlePipeline()
     vkDestroyShaderModule(device, fragShaderModule, nullptr);
 }
 
-void RenderingPipeline::updateUniformBuffers(const Light &light, const Camera &camera, u_int32_t currentImage)
+VkImageView ShadowmapPipeline::getDepthMapView() const
 {
-    UniformBufferObject ubo{};
-    ubo.model = glm::mat4(1.0f);
-    ubo.view = glm::lookAt(camera.position, camera.position + camera.direction, camera.up);
-    ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 100.0f);
-    ubo.proj[1][1] *= -1;
-    ubo.projViewModel = ubo.proj * ubo.view * ubo.model;
-
-    memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
-
-    SceneDataBufferObject scene{};
-    scene.ambientLight = glm::vec4(light.ambient);
-    scene.lightColor = glm::vec4(light.color, 1.0f);
-    scene.lightDirection = glm::vec4(light.direction, 1.0f);
-
-    memcpy(sceneDataBuffersMapped[currentImage], &scene, sizeof(scene));
+    return depthMapView;
 }
 
-void RenderingPipeline::recordRendering(VkCommandBuffer commandBuffer, SwapChainImageResource imageResource, uint32_t currentFrame, Moon &moon, Rings &particles)
+void ShadowmapPipeline::updateUniformBuffers(const Light &light, u_int32_t currentFrame)
 {
-    std::array<VkClearValue, 2> clearValues{};
-    clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
-    clearValues[1].depthStencil = {1.0f, 0};
+    UniformBufferObject ubo{};
 
+    ubo.model = glm::mat4(1.0f);
+    ubo.view = glm::lookAt(light.direction, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+    ubo.proj = glm::ortho(-7.0f, 7.0f, 7.0f, -7.0f, 0.0f, 20.0f);
+    
+    ubo.projViewModel = ubo.proj * ubo.view * ubo.model;
+
+    memcpy(uniformBuffersMapped[currentFrame], &ubo, sizeof(ubo));
+}
+
+void ShadowmapPipeline::recordRendering(VkCommandBuffer commandBuffer, uint32_t currentFrame, Moon &moon, Rings &particles)
+{
     transitionImageLayout
     (
         commandBuffer,
-        imageResource.swapchainImage,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        {},
-        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_IMAGE_ASPECT_COLOR_BIT
-    );
-
-    transitionImageLayout
-    (
-        commandBuffer,
-        depthImage,
+        depthMap,
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
         VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
@@ -595,74 +479,49 @@ void RenderingPipeline::recordRendering(VkCommandBuffer commandBuffer, SwapChain
         VK_IMAGE_ASPECT_DEPTH_BIT
     );
 
-    transitionImageLayout
-    (
-        commandBuffer,
-        colorImage,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_IMAGE_ASPECT_COLOR_BIT
-    );
+    VkClearValue clearValue{};
+    clearValue.depthStencil = {1.0f, 0};
 
-    VkRenderingAttachmentInfo colorAttachmentInfo{};
-    colorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    colorAttachmentInfo.imageView = colorImageView;
-    colorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    colorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAttachmentInfo.clearValue = clearValues[0];
+    VkRenderingAttachmentInfo shadowPassDepthAttachmentInfo{};
+    shadowPassDepthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    shadowPassDepthAttachmentInfo.imageView = depthMapView;
+    shadowPassDepthAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    shadowPassDepthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    shadowPassDepthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    shadowPassDepthAttachmentInfo.clearValue = clearValue;
 
-    colorAttachmentInfo.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
-    colorAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    colorAttachmentInfo.resolveImageView = imageResource.swapchainImageView;
+    VkRenderingInfo shadowPassRenderingInfo{};
+    shadowPassRenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+    shadowPassRenderingInfo.renderArea = {.offset = {0, 0}, .extent = shadowMapExtent};
+    shadowPassRenderingInfo.layerCount = 1;
+    shadowPassRenderingInfo.colorAttachmentCount = 0;
+    shadowPassRenderingInfo.pColorAttachments = nullptr;
+    shadowPassRenderingInfo.pDepthAttachment = &shadowPassDepthAttachmentInfo;
 
-    VkRenderingAttachmentInfo depthAttachmentInfo{};
-    depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    depthAttachmentInfo.imageView = depthImageView;
-    depthAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-    depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depthAttachmentInfo.clearValue = clearValues[1];
-
-    VkRenderingInfo renderingInfo{};
-    renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-    renderingInfo.renderArea = { .offset = { 0, 0 }, .extent = swapChainExtent };
-    renderingInfo.layerCount = 1;
-    renderingInfo.colorAttachmentCount = 1;
-    renderingInfo.pColorAttachments = &colorAttachmentInfo;
-    renderingInfo.pDepthAttachment = &depthAttachmentInfo;
-
-    vkCmdBeginRendering(commandBuffer, &renderingInfo);
-
+    vkCmdBeginRendering(commandBuffer, &shadowPassRenderingInfo);
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, modelPipeline);
+
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = static_cast<float>(swapChainExtent.width);
-    viewport.height = static_cast<float>(swapChainExtent.height);
+    viewport.width = static_cast<float>(shadowMapExtent.width);
+    viewport.height = static_cast<float>(shadowMapExtent.height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
+    
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
     VkRect2D scissor{};
     scissor.offset = {0, 0};
-    scissor.extent = swapChainExtent;
-    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    scissor.extent = shadowMapExtent;
 
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, modelPipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
-    
     moon.draw(commandBuffer);
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, particlePipeline);
-
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, particlePipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
     particles.draw(commandBuffer, currentFrame);
@@ -672,13 +531,18 @@ void RenderingPipeline::recordRendering(VkCommandBuffer commandBuffer, SwapChain
     transitionImageLayout
     (
         commandBuffer,
-        imageResource.swapchainImage,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-        VK_ACCESS_2_NONE_KHR,
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_PIPELINE_STAGE_2_NONE_KHR,
-        VK_IMAGE_ASPECT_COLOR_BIT
+        depthMap,
+        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
+        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+        VK_IMAGE_ASPECT_DEPTH_BIT
     );
+}
+
+std::vector<VkBuffer> ShadowmapPipeline::getUniformBuffers() const
+{
+    return uniformBuffers;
 }

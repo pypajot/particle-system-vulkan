@@ -1,4 +1,4 @@
-#include "ComputePipeline.hpp"
+#include "Pipelines/ComputePipeline.hpp"
 #include "ParticleSystemApplication.hpp"
 
 void ComputePipeline::init(VkDevice appDevice, VkQueue computeQueue)

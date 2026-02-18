@@ -4,7 +4,7 @@
 #include <string>
 #include <vulkan/vulkan.hpp>
 
-#include "Vertex.hpp"
+#include "DataObjects/Vertex.hpp"
 
 /// @brief Moon object and its necessary data
 class Moon

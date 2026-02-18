@@ -1,6 +1,6 @@
 #include "ParticleSystemApplication.hpp"
-#include "Particle.hpp"
 #include "ParticleSystemUtils.hpp"
+#include "DataObjects/Particle.hpp"
 
 #include <cstring>
 #include <map>

@@ -3,7 +3,6 @@
 #include <vulkan/vulkan.hpp>
 #include <vector>
 
-#include "Particle.hpp"
 #include "ParticleSystemUtils.hpp"
 
 /// @brief Class that manages objects related to the compute pipeline

@@ -11,14 +11,14 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
-#include "Vertex.hpp"
 #include "Window.hpp"
 #include "Swapchain.hpp"
-#include "RenderingPipeline.hpp"
-#include "ComputePipeline.hpp"
-#include "ShadowmapPipeline.hpp"
-#include "Moon.hpp"
-#include "Rings.hpp"
+#include "Pipelines/RenderingPipeline.hpp"
+#include "Pipelines/ComputePipeline.hpp"
+#include "Pipelines/ShadowmapPipeline.hpp"
+#include "Objects/Moon.hpp"
+#include "Objects/Rings.hpp"
+#include "DataObjects/Vertex.hpp"
 
 #define NUMBER_OF_FRAMES_IN_FLIGHT 2
 

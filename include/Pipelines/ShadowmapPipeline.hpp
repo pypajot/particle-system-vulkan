@@ -2,9 +2,9 @@
 
 #include <vulkan/vulkan.hpp>
 
-#include "Moon.hpp"
-#include "Rings.hpp"
-#include "Light.hpp"
+#include "Objects/Moon.hpp"
+#include "Objects/Rings.hpp"
+#include "Scene/Light.hpp"
 
 #define SHADOW_MAP_WIDTH 1024
 #define SHADOW_MAP_HEIGHT 1024

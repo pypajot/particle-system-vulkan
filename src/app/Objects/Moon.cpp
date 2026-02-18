@@ -1,6 +1,6 @@
-#include "Moon.hpp"
+#include "Objects/Moon.hpp"
+#include "DataObjects/Vertex.hpp"
 #include "ParticleSystemUtils.hpp"
-#include "Vertex.hpp"
 
 #ifndef TINYOBJLOADER_IMPLEMENTATION
     #define TINYOBJLOADER_IMPLEMENTATION

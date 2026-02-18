@@ -7,15 +7,15 @@ OBJDIR := obj
 SRCDIR := src
 
 SRCS := main.cpp \
-		ComputePipeline.cpp \
-		Moon.cpp \
-		Rings.cpp \
-		ParticleSystemApplication.cpp \
-		ParticleSystemUtils.cpp \
-		RenderingPipeline.cpp \
-		ShadowmapPipeline.cpp \
-		Swapchain.cpp \
-		Window.cpp
+		app/ParticleSystemApplication.cpp \
+		app/Pipelines/ComputePipeline.cpp \
+		app/Pipelines/RenderingPipeline.cpp \
+		app/Pipelines/ShadowmapPipeline.cpp \
+		app/Objects/Moon.cpp \
+		app/Objects/Rings.cpp \
+		app/ParticleSystemUtils.cpp \
+		app/Swapchain.cpp \
+		app/Window.cpp
 
 
 OBJS := $(patsubst %.cpp,$(OBJDIR)/%.o, $(strip $(SRCS)))

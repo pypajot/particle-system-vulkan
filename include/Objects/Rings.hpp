@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.hpp>
 #include <vector>
 
-#include "Particle.hpp"
+#include "DataObjects/Particle.hpp"
 
 #define PARTICLE_NUMBER 16777216
 

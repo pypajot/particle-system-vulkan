@@ -1,4 +1,4 @@
-#include "Rings.hpp"
+#include "Objects/Rings.hpp"
 #include "ParticleSystemApplication.hpp"
 #include "ParticleSystemUtils.hpp"
 
