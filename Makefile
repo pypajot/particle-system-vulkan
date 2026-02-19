@@ -2,6 +2,7 @@ NAME := particle-engine
 CC := g++
 LDFLAGS := -lglfw -lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi
 CPPFLAGS := -Wall -Wextra -Werror -MMD --std c++17 -DNDEBUG
+GLSLFLAGS := -gVS
 
 OBJDIR := obj
 SRCDIR := src
@@ -65,7 +66,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	$(CC) $(CPPFLAGS) -o $@ -c $< -I$(INCS) -I$(PATH_TO_STB)
 
 $(SHADERDIR)/%.spv: $(SHADERDIR)/%
-	glslangValidator -V $< -o $@ -gVS
+	glslangValidator -V $< -o $@ $(GLSLFLAGS)
 
 shader: $(SHADERSPV)
 
@@ -82,5 +83,4 @@ re: fclean all
 
 -include $(DEPS)
 
-
-.PHONY: re fclean clean all debug
+.PHONY: re fclean clean all debug shader shaderclean
